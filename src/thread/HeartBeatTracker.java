@@ -6,7 +6,7 @@ public class HeartBeatTracker {
     private final static int LEADER_TIME_OUT_WAIT = 5000;
 
     private final Runnable electLeaderCallBack;
-    private long latestReceivedTimeStamp;
+    private volatile long latestReceivedTimeStamp;
     private final long maxDelayTolerance;
 
     public HeartBeatTracker(

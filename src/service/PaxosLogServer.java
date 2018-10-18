@@ -4,6 +4,7 @@ import message.Message;
 import thread.HeartBeatTracker;
 import thread.ThreadHandler;
 import util.AddressPortPair;
+import util.LogWriter;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -39,6 +40,7 @@ public class PaxosLogServer {
     private final Queue<Message> messageQueue;
 
     private final HeartBeatTracker tracker;
+    private final LogWriter logWriter;
 
     public PaxosLogServer(
             final int serverId,
@@ -64,6 +66,7 @@ public class PaxosLogServer {
         this.allClientSendSockets = new ConcurrentHashMap<>();
         this.messageQueue = new ConcurrentLinkedQueue<>();
         this.tracker = new HeartBeatTracker(this::tryToBecomeLeader, System.currentTimeMillis(), HEART_BEAT_PERIOD_MILLS);
+        this.logWriter = new LogWriter(serverId);
         System.out.println("Server with ID: " + serverId + " initialize at address: " + serverAddr + ':' + serverPort);
     }
 
@@ -71,10 +74,13 @@ public class PaxosLogServer {
      * Entrance of the server
      */
     public void start() {
-        new Thread(new IncomingSocketHandler(serverPort)).start();
-        createSendSocketsForReplicasIfNecessary();
-        new Thread(new HeartBeatLogger()).start();
-        tracker.start();
+        final Thread inComingSocketHandler = new Thread(new IncomingSocketHandler(serverPort));
+        final Thread heartBeatLogger = new Thread(new HeartBeatLogger());
+        inComingSocketHandler.start();  // start listing to its port for incoming sockets
+        createSendSocketsForReplicasIfNecessary();  // try to connect all other replicas at beginning
+        heartBeatLogger.start();    // start heartbeat logger
+        tracker.start();    // start heartbeat tracker
+
     }
 
     /**

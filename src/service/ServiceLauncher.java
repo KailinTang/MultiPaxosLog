@@ -26,7 +26,6 @@ public class ServiceLauncher {
         );
 
         logServer.start();
-
     }
 
 }
