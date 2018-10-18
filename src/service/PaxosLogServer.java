@@ -54,12 +54,18 @@ public class PaxosLogServer {
         System.out.println("Server with ID: " + serverId + " initialize at address: " + serverAddr + ':' + serverPort);
     }
 
+    /**
+     * Entrance of the server
+     */
     public void start() {
         new Thread(new IncomingSocketHandler(serverPort)).start();
-        new Thread(new HeartBeatLogger()).start();
         createSendSocketsForReplicasIfNecessary();
+        new Thread(new HeartBeatLogger()).start();
     }
 
+    /**
+     * Create replica sending sockets if we don't have 2f such sockets or some such sockets are died
+     */
     private void createSendSocketsForReplicasIfNecessary() {
         // If all replicas sending sockets are alive and # of those equal to 2f, we no longer
         if (areAllSendSocketsAlive() && allReplicaSendSockets.size() == totalNumOfReplicas - 1) {
@@ -69,6 +75,9 @@ public class PaxosLogServer {
         }
     }
 
+    /**
+     * Create replica sending sockets if we don't have that connection and save it to allReplicaSendSockets
+     */
     private void createSendSocketsForReplicas() {
         for (int i = 0; i < allReplicasInfo.size(); i++) {
             if (serverId == i) {    // we should never create a socket connect to itself
@@ -88,6 +97,9 @@ public class PaxosLogServer {
         }
     }
 
+    /**
+     * @return Whether all sockets in allReplicaSendSockets are alive
+     */
     private boolean areAllSendSocketsAlive() {
         if (allReplicaSendSockets.size() == 0) {
             return false;
@@ -172,6 +184,12 @@ public class PaxosLogServer {
         }
     }
 
+    /**
+     * Broadcast a message to all replicas through send replica socket.
+     *
+     * @param message
+     * @throws IOException
+     */
     private void broadcastToAllReplicas(final String message) throws IOException {
         createSendSocketsForReplicasIfNecessary();
         for (final Socket replicaSendSocket : allReplicaSendSockets) {
@@ -180,6 +198,9 @@ public class PaxosLogServer {
         }
     }
 
+    /**
+     * If the current process is leader, it will send heartbeat messages to all other replicas periodically.
+     */
     public class HeartBeatLogger implements Runnable {
 
         @Override
