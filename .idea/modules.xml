@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/PaxosLog.iml" filepath="$PROJECT_DIR$/PaxosLog.iml" />
+      <module fileurl="file://$PROJECT_DIR$/MultiPaxosLog.iml" filepath="$PROJECT_DIR$/MultiPaxosLog.iml" />
     </modules>
   </component>
 </project>

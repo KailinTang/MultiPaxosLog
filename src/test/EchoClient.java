@@ -7,16 +7,21 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class EchoClient {
     public static void main(String[] args) throws IOException {
 
         String hostName = "127.0.0.1";
+        List<Socket> allSockets = new ArrayList<>();
+        Socket echoSocket = new Socket(hostName, 3057);
+        Socket echoSocket1 = new Socket(hostName, 3057);
+
+        allSockets.add(echoSocket);
+        allSockets.add(echoSocket1);
 
         try (
-                Socket echoSocket = new Socket(hostName, 3057, InetAddress.getByName("127.0.0.1"), 55555);
-//                Socket echoSocket1 = new Socket(hostName, 3058, InetAddress.getByName("127.0.0.1"), 55555);
-
                 PrintWriter out =
                         new PrintWriter(echoSocket.getOutputStream(), true);
                 BufferedReader in =
@@ -30,6 +35,7 @@ public class EchoClient {
             while ((userInput = stdIn.readLine()) != null) {
                 out.println(userInput);
                 System.out.println("echo: " + in.readLine());
+                System.out.println(allSockets.size());
             }
         } catch (UnknownHostException e) {
             System.err.println("Don't know about host " + hostName);
