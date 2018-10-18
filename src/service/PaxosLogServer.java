@@ -5,6 +5,7 @@ import thread.ThreadHandler;
 import util.AddressPortPair;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.List;
@@ -22,6 +23,8 @@ public class PaxosLogServer {
     private final String serverAddr;
     private final int serverPort;
 
+    private boolean isLeader;
+
     private final int totalNumOfReplicas;
     private final List<AddressPortPair> allReplicasInfo;
 
@@ -33,11 +36,13 @@ public class PaxosLogServer {
     private final Map<AddressPortPair, Socket> allClientSendSockets;
     private final Queue<Message> messageQueue;
 
-    public PaxosLogServer(final int serverId, final String serverAddr, final int serverPort, final int numOfToleratedFailures,
-                          final List<AddressPortPair> allReplicasInfo, final int skipSlotSeqNum, final double messageLossRate) {
+    public PaxosLogServer(final int serverId, final String serverAddr, final int serverPort, boolean isLeader,
+                          final int numOfToleratedFailures, final List<AddressPortPair> allReplicasInfo,
+                          final int skipSlotSeqNum, final double messageLossRate) {
         this.serverId = serverId;
         this.serverAddr = serverAddr;
         this.serverPort = serverPort;
+        this.isLeader = isLeader;
         this.totalNumOfReplicas = numOfToleratedFailures * 2 + 1;
         this.allReplicasInfo = allReplicasInfo;
         this.skipSlotSeqNum = skipSlotSeqNum;
@@ -51,6 +56,7 @@ public class PaxosLogServer {
 
     public void start() {
         new Thread(new IncomingSocketHandler(serverPort)).start();
+        new Thread(new HeartBeatLogger()).start();
         createSendSocketsForReplicasIfNecessary();
     }
 
@@ -166,11 +172,28 @@ public class PaxosLogServer {
         }
     }
 
+    private void broadcastToAllReplicas(final String message) throws IOException {
+        createSendSocketsForReplicasIfNecessary();
+        for (final Socket replicaSendSocket : allReplicaSendSockets) {
+            final PrintWriter writer = new PrintWriter(replicaSendSocket.getOutputStream(), true);
+            writer.println(message);
+        }
+    }
+
     public class HeartBeatLogger implements Runnable {
 
         @Override
         public void run() {
-
+            while(true) {
+                if (isLeader) {
+                    try {
+                        broadcastToAllReplicas("Heart Beat!");
+                        Thread.sleep(HEART_BEAT_PERIOD_MILLS);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
         }
     }
 }
