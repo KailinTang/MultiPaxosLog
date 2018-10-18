@@ -18,6 +18,7 @@ public class ServiceLauncher {
                 "127.0.0.1",
                 3057,
                 true,
+                0,
                 1,
                 allReplicasInfo,
                 0,

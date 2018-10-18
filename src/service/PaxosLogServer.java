@@ -1,6 +1,7 @@
 package service;
 
 import message.Message;
+import thread.HeartBeatTracker;
 import thread.ThreadHandler;
 import util.AddressPortPair;
 
@@ -23,7 +24,8 @@ public class PaxosLogServer {
     private final String serverAddr;
     private final int serverPort;
 
-    private boolean isLeader;
+    private volatile boolean isLeader;
+    private int viewNumber;
 
     private final int totalNumOfReplicas;
     private final List<AddressPortPair> allReplicasInfo;
@@ -36,13 +38,23 @@ public class PaxosLogServer {
     private final Map<AddressPortPair, Socket> allClientSendSockets;
     private final Queue<Message> messageQueue;
 
-    public PaxosLogServer(final int serverId, final String serverAddr, final int serverPort, boolean isLeader,
-                          final int numOfToleratedFailures, final List<AddressPortPair> allReplicasInfo,
-                          final int skipSlotSeqNum, final double messageLossRate) {
+    private final HeartBeatTracker tracker;
+
+    public PaxosLogServer(
+            final int serverId,
+            final String serverAddr,
+            final int serverPort,
+            boolean isLeader,
+            int viewNumber,
+            final int numOfToleratedFailures,
+            final List<AddressPortPair> allReplicasInfo,
+            final int skipSlotSeqNum,
+            final double messageLossRate) {
         this.serverId = serverId;
         this.serverAddr = serverAddr;
         this.serverPort = serverPort;
         this.isLeader = isLeader;
+        this.viewNumber = viewNumber;
         this.totalNumOfReplicas = numOfToleratedFailures * 2 + 1;
         this.allReplicasInfo = allReplicasInfo;
         this.skipSlotSeqNum = skipSlotSeqNum;
@@ -51,6 +63,7 @@ public class PaxosLogServer {
         this.allReplicaSendSockets = new Vector<>();
         this.allClientSendSockets = new ConcurrentHashMap<>();
         this.messageQueue = new ConcurrentLinkedQueue<>();
+        this.tracker = new HeartBeatTracker(this::tryToBecomeLeader, System.currentTimeMillis(), HEART_BEAT_PERIOD_MILLS);
         System.out.println("Server with ID: " + serverId + " initialize at address: " + serverAddr + ':' + serverPort);
     }
 
@@ -61,6 +74,7 @@ public class PaxosLogServer {
         new Thread(new IncomingSocketHandler(serverPort)).start();
         createSendSocketsForReplicasIfNecessary();
         new Thread(new HeartBeatLogger()).start();
+        tracker.start();
     }
 
     /**
@@ -176,12 +190,25 @@ public class PaxosLogServer {
                 String line;
                 while ((line = super.bufferedReader.readLine()) != null) {
                     System.out.println(line);
+                    tracker.setLatestReceivedTimeStamp(Long.parseLong(line.split(":")[1]));
                     messageQueue.offer(new Message(line));
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    private void tryToBecomeLeader() {
+        if (getCurrentLeader() + 1 == this.serverId) {
+            System.out.println("Proposer " + serverId + " is trying to become leader");
+            this.isLeader = true;
+            this.viewNumber += 1;
+        }
+    }
+
+    private int getCurrentLeader() {
+        return this.viewNumber % this.totalNumOfReplicas;
     }
 
     /**
@@ -208,7 +235,9 @@ public class PaxosLogServer {
             while(true) {
                 if (isLeader) {
                     try {
-                        broadcastToAllReplicas("Heart Beat!");
+                        final long currentTimeStamp = System.currentTimeMillis();
+                        System.out.println(currentTimeStamp);
+                        broadcastToAllReplicas("HEART_BEAT:" + currentTimeStamp);
                         Thread.sleep(HEART_BEAT_PERIOD_MILLS);
                     } catch (Exception e) {
                         e.printStackTrace();
