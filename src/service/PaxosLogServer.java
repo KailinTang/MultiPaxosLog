@@ -197,8 +197,10 @@ public class PaxosLogServer {
                 String line;
                 while ((line = super.bufferedReader.readLine()) != null) {
                     System.out.println(line);
-                    updateViewNumber(Integer.parseInt(line.split(":")[1]));
-                    tracker.setLatestReceivedTimeStamp(Long.parseLong(line.split(":")[2]));
+                    if (Message.getMessageType(line).equals(Message.MESSAGE_TYPE.HEART_BEAT)) {
+                        updateViewNumber(Integer.parseInt(line.split(":")[1]));
+                        tracker.setLatestReceivedTimeStamp(Long.parseLong(line.split(":")[2]));
+                    }
                     messageQueue.offer(new Message(line));
                 }
             } catch (Exception e) {

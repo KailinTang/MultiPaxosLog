@@ -2,12 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="52c602c9-dbcc-42ce-927c-816663c953cf" name="Default" comment="">
-      <change beforePath="" afterPath="$PROJECT_DIR$/src/test/Test.java" />
+      <change beforePath="" afterPath="$PROJECT_DIR$/src/util/LogEntry.java" />
+      <change beforePath="" afterPath="$PROJECT_DIR$/src/util/LogEntrySlotManager.java" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/out/production/MultiPaxosLog/service/PaxosLogServer.class" afterPath="$PROJECT_DIR$/out/production/MultiPaxosLog/service/PaxosLogServer.class" />
       <change beforePath="$PROJECT_DIR$/src/message/Message.java" afterPath="$PROJECT_DIR$/src/message/Message.java" />
       <change beforePath="$PROJECT_DIR$/src/service/PaxosLogServer.java" afterPath="$PROJECT_DIR$/src/service/PaxosLogServer.java" />
-      <change beforePath="$PROJECT_DIR$/src/thread/HeartBeatTracker.java" afterPath="$PROJECT_DIR$/src/thread/HeartBeatTracker.java" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -19,19 +18,63 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="PaxosLogServer.java" pinned="false" current-in-tab="false">
+      <file leaf-file-name="PaxosLogServer.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/service/PaxosLogServer.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1185">
-              <caret line="255" column="81" lean-forward="false" selection-start-line="255" selection-start-column="81" selection-end-line="255" selection-end-column="81" />
+            <state relative-caret-position="428">
+              <caret line="203" column="49" lean-forward="true" selection-start-line="203" selection-start-column="49" selection-end-line="203" selection-end-column="49" />
               <folding>
                 <element signature="imports" expanded="true" />
                 <element signature="e#7137#7138#0" expanded="true" />
                 <element signature="e#7174#7175#0" expanded="true" />
-                <element signature="e#7778#7779#0" expanded="true" />
-                <element signature="e#7814#7815#0" expanded="true" />
-                <element signature="e#8242#8243#0" expanded="true" />
-                <element signature="e#8306#8307#0" expanded="true" />
+                <element signature="e#7904#7905#0" expanded="true" />
+                <element signature="e#7940#7941#0" expanded="true" />
+                <element signature="e#8368#8369#0" expanded="true" />
+                <element signature="e#8432#8433#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="LogEntrySlotManager.java" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/util/LogEntrySlotManager.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="132">
+              <caret line="6" column="20" lean-forward="false" selection-start-line="6" selection-start-column="12" selection-end-line="6" selection-end-column="20" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="LogWriter.java" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/util/LogWriter.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="332">
+              <caret line="18" column="69" lean-forward="false" selection-start-line="18" selection-start-column="61" selection-end-line="18" selection-end-column="69" />
+              <folding>
+                <element signature="e#129#130#0" expanded="true" />
+                <element signature="e#169#170#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="LogEntry.java" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/util/LogEntry.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="308">
+              <caret line="14" column="48" lean-forward="false" selection-start-line="14" selection-start-column="48" selection-end-line="14" selection-end-column="48" />
+              <folding>
+                <element signature="e#510#511#0" expanded="true" />
+                <element signature="e#549#550#0" expanded="true" />
+                <element signature="e#610#611#0" expanded="true" />
+                <element signature="e#666#667#0" expanded="true" />
+                <element signature="e#706#707#0" expanded="true" />
+                <element signature="e#742#743#0" expanded="true" />
+                <element signature="e#800#801#0" expanded="true" />
+                <element signature="e#850#851#0" expanded="true" />
+                <element signature="e#905#906#0" expanded="true" />
+                <element signature="e#959#960#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -65,10 +108,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="PaxosLogClient.java" pinned="false" current-in-tab="true">
+      <file leaf-file-name="PaxosLogClient.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/client/PaxosLogClient.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="228">
+            <state relative-caret-position="334">
               <caret line="19" column="58" lean-forward="false" selection-start-line="19" selection-start-column="58" selection-end-line="19" selection-end-column="58" />
               <folding>
                 <element signature="imports" expanded="true" />
@@ -80,13 +123,11 @@
       <file leaf-file-name="Message.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/message/Message.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="175">
-              <caret line="8" column="56" lean-forward="true" selection-start-line="8" selection-start-column="28" selection-end-line="8" selection-end-column="56" />
+            <state relative-caret-position="569">
+              <caret line="29" column="0" lean-forward="true" selection-start-line="29" selection-start-column="0" selection-end-line="29" selection-end-column="0" />
               <folding>
-                <element signature="e#467#468#0" expanded="true" />
-                <element signature="e#519#520#0" expanded="true" />
-                <element signature="e#593#594#0" expanded="true" />
-                <element signature="e#620#621#0" expanded="true" />
+                <element signature="e#1787#1788#0" expanded="true" />
+                <element signature="e#1814#1815#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -104,26 +145,6 @@
                 <element signature="e#476#477#0" expanded="true" />
                 <element signature="e#859#860#0" expanded="true" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="ServiceLauncher2.java" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/service/ServiceLauncher2.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="374">
-              <caret line="20" column="18" lean-forward="true" selection-start-line="20" selection-start-column="18" selection-end-line="20" selection-end-column="18" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="ClientLauncher.java" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/client/ClientLauncher.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="380">
-              <caret line="28" column="25" lean-forward="false" selection-start-line="28" selection-start-column="25" selection-end-line="28" selection-end-column="43" />
-              <folding />
             </state>
           </provider>
         </entry>
@@ -186,9 +207,12 @@
         <option value="$PROJECT_DIR$/src/service/ServiceLauncher.java" />
         <option value="$PROJECT_DIR$/src/util/LogWriter.java" />
         <option value="$PROJECT_DIR$/src/test/Test.java" />
+        <option value="$PROJECT_DIR$/src/thread/HeartBeatTracker.java" />
+        <option value="$PROJECT_DIR$/src/util/LogEntrySlot.java" />
+        <option value="$PROJECT_DIR$/src/util/LogEntrySlotManager.java" />
+        <option value="$PROJECT_DIR$/src/util/LogEntry.java" />
         <option value="$PROJECT_DIR$/src/message/Message.java" />
         <option value="$PROJECT_DIR$/src/service/PaxosLogServer.java" />
-        <option value="$PROJECT_DIR$/src/thread/HeartBeatTracker.java" />
       </list>
     </option>
   </component>
@@ -508,9 +532,9 @@
     </list>
     <recent_temporary>
       <list size="5">
-        <item index="0" class="java.lang.String" itemvalue="Application.ServiceLauncher" />
+        <item index="0" class="java.lang.String" itemvalue="Application.ServiceLauncher2" />
         <item index="1" class="java.lang.String" itemvalue="Application.ServiceLauncher1" />
-        <item index="2" class="java.lang.String" itemvalue="Application.ServiceLauncher2" />
+        <item index="2" class="java.lang.String" itemvalue="Application.ServiceLauncher" />
         <item index="3" class="java.lang.String" itemvalue="Application.Test" />
         <item index="4" class="java.lang.String" itemvalue="Application.EchoClient" />
       </list>
@@ -533,12 +557,12 @@
       <workItem from="1539456237653" duration="1408000" />
       <workItem from="1539457835768" duration="22981000" />
       <workItem from="1539820699113" duration="1000" />
-      <workItem from="1539820712545" duration="28034000" />
+      <workItem from="1539820712545" duration="33323000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="52761000" />
+    <option name="totallyTimeSpent" value="58050000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1680" height="1050" extended-state="0" />
@@ -557,7 +581,7 @@
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.26816785" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Capture Tool" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Designer" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.20940171" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.16605617" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -587,25 +611,6 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/src/message/Message.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="220">
-          <caret line="10" column="0" lean-forward="false" selection-start-line="10" selection-start-column="0" selection-end-line="10" selection-end-column="0" />
-          <folding>
-            <element signature="e#467#468#0" expanded="true" />
-            <element signature="e#519#520#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar:///Library/Java/JavaVirtualMachines/jdk1.8.0_144.jdk/Contents/Home/src.zip!/java/net/Socket.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="8580">
-          <caret line="421" column="12" lean-forward="false" selection-start-line="421" selection-start-column="12" selection-end-line="421" selection-end-column="12" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/thread/ThreadHandler.java">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="264">
@@ -672,10 +677,10 @@
             <element signature="imports" expanded="true" />
             <element signature="e#7137#7138#0" expanded="true" />
             <element signature="e#7174#7175#0" expanded="true" />
-            <element signature="e#7778#7779#0" expanded="true" />
-            <element signature="e#7814#7815#0" expanded="true" />
-            <element signature="e#8242#8243#0" expanded="true" />
-            <element signature="e#8306#8307#0" expanded="true" />
+            <element signature="e#7904#7905#0" expanded="true" />
+            <element signature="e#7940#7941#0" expanded="true" />
+            <element signature="e#8368#8369#0" expanded="true" />
+            <element signature="e#8432#8433#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -704,8 +709,8 @@
         <state relative-caret-position="176">
           <caret line="10" column="0" lean-forward="true" selection-start-line="10" selection-start-column="0" selection-end-line="10" selection-end-column="0" />
           <folding>
-            <element signature="e#467#468#0" expanded="true" />
-            <element signature="e#519#520#0" expanded="true" />
+            <element signature="e#663#664#0" expanded="true" />
+            <element signature="e#774#775#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -840,7 +845,7 @@
         <state relative-caret-position="433">
           <caret line="20" column="35" lean-forward="false" selection-start-line="20" selection-start-column="35" selection-end-line="20" selection-end-column="35" />
           <folding>
-            <marker date="1539964904291" expanded="true" signature="58180:58228" ph="..." />
+            <marker date="1539984149665" expanded="true" signature="59718:59766" ph="..." />
           </folding>
         </state>
       </provider>
@@ -922,20 +927,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/util/AddressPortPair.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="770">
-          <caret line="35" column="27" lean-forward="false" selection-start-line="35" selection-start-column="27" selection-end-line="35" selection-end-column="27" />
-          <folding>
-            <element signature="e#396#397#0" expanded="true" />
-            <element signature="e#421#422#0" expanded="true" />
-            <element signature="e#449#450#0" expanded="true" />
-            <element signature="e#476#477#0" expanded="true" />
-            <element signature="e#859#860#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/replica0.log">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -952,27 +943,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/util/LogWriter.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="304">
-          <caret line="19" column="47" lean-forward="true" selection-start-line="19" selection-start-column="47" selection-end-line="19" selection-end-column="47" />
-          <folding>
-            <element signature="e#129#130#0" expanded="true" />
-            <element signature="e#169#170#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/service/ServiceLauncher.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="594">
-          <caret line="27" column="26" lean-forward="false" selection-start-line="27" selection-start-column="26" selection-end-line="27" selection-end-column="26" />
-          <folding>
-            <element signature="imports" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/test/Test.java">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="330">
@@ -980,35 +950,6 @@
           <folding>
             <element signature="e#106#107#0" expanded="true" />
             <element signature="e#162#163#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/service/PaxosLogServer.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1185">
-          <caret line="255" column="81" lean-forward="false" selection-start-line="255" selection-start-column="81" selection-end-line="255" selection-end-column="81" />
-          <folding>
-            <element signature="imports" expanded="true" />
-            <element signature="e#7137#7138#0" expanded="true" />
-            <element signature="e#7174#7175#0" expanded="true" />
-            <element signature="e#7778#7779#0" expanded="true" />
-            <element signature="e#7814#7815#0" expanded="true" />
-            <element signature="e#8242#8243#0" expanded="true" />
-            <element signature="e#8306#8307#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/message/Message.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="175">
-          <caret line="8" column="56" lean-forward="true" selection-start-line="8" selection-start-column="28" selection-end-line="8" selection-end-column="56" />
-          <folding>
-            <element signature="e#467#468#0" expanded="true" />
-            <element signature="e#519#520#0" expanded="true" />
-            <element signature="e#593#594#0" expanded="true" />
-            <element signature="e#620#621#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -1028,10 +969,99 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/client/PaxosLogClient.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="228">
+        <state relative-caret-position="334">
           <caret line="19" column="58" lean-forward="false" selection-start-line="19" selection-start-column="58" selection-end-line="19" selection-end-column="58" />
           <folding>
             <element signature="imports" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/service/ServiceLauncher.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="594">
+          <caret line="27" column="26" lean-forward="false" selection-start-line="27" selection-start-column="26" selection-end-line="27" selection-end-column="26" />
+          <folding>
+            <element signature="imports" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/util/AddressPortPair.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="770">
+          <caret line="35" column="27" lean-forward="false" selection-start-line="35" selection-start-column="27" selection-end-line="35" selection-end-column="27" />
+          <folding>
+            <element signature="e#396#397#0" expanded="true" />
+            <element signature="e#421#422#0" expanded="true" />
+            <element signature="e#449#450#0" expanded="true" />
+            <element signature="e#476#477#0" expanded="true" />
+            <element signature="e#859#860#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/util/LogWriter.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="332">
+          <caret line="18" column="69" lean-forward="false" selection-start-line="18" selection-start-column="61" selection-end-line="18" selection-end-column="69" />
+          <folding>
+            <element signature="e#129#130#0" expanded="true" />
+            <element signature="e#169#170#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/util/LogEntrySlotManager.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="132">
+          <caret line="6" column="20" lean-forward="false" selection-start-line="6" selection-start-column="12" selection-end-line="6" selection-end-column="20" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/util/LogEntry.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="308">
+          <caret line="14" column="48" lean-forward="false" selection-start-line="14" selection-start-column="48" selection-end-line="14" selection-end-column="48" />
+          <folding>
+            <element signature="e#510#511#0" expanded="true" />
+            <element signature="e#549#550#0" expanded="true" />
+            <element signature="e#610#611#0" expanded="true" />
+            <element signature="e#666#667#0" expanded="true" />
+            <element signature="e#706#707#0" expanded="true" />
+            <element signature="e#742#743#0" expanded="true" />
+            <element signature="e#800#801#0" expanded="true" />
+            <element signature="e#850#851#0" expanded="true" />
+            <element signature="e#905#906#0" expanded="true" />
+            <element signature="e#959#960#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/message/Message.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="569">
+          <caret line="29" column="0" lean-forward="true" selection-start-line="29" selection-start-column="0" selection-end-line="29" selection-end-column="0" />
+          <folding>
+            <element signature="e#1787#1788#0" expanded="true" />
+            <element signature="e#1814#1815#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/service/PaxosLogServer.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="428">
+          <caret line="203" column="49" lean-forward="true" selection-start-line="203" selection-start-column="49" selection-end-line="203" selection-end-column="49" />
+          <folding>
+            <element signature="imports" expanded="true" />
+            <element signature="e#7137#7138#0" expanded="true" />
+            <element signature="e#7174#7175#0" expanded="true" />
+            <element signature="e#7904#7905#0" expanded="true" />
+            <element signature="e#7940#7941#0" expanded="true" />
+            <element signature="e#8368#8369#0" expanded="true" />
+            <element signature="e#8432#8433#0" expanded="true" />
           </folding>
         </state>
       </provider>
