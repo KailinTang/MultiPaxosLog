@@ -65,7 +65,11 @@ public class PaxosLogServer {
         this.allReplicaSendSockets = new Vector<>();
         this.allClientSendSockets = new ConcurrentHashMap<>();
         this.messageQueue = new ConcurrentLinkedQueue<>();
-        this.tracker = new HeartBeatTracker(this::tryToBecomeLeader, System.currentTimeMillis(), HEART_BEAT_PERIOD_MILLS);
+        this.tracker = new HeartBeatTracker(
+                this::increaseViewNumber,
+                this::tryToBecomeLeader,
+                System.currentTimeMillis(),
+                HEART_BEAT_PERIOD_MILLS);
         this.logWriter = new LogWriter(serverId);
         System.out.println("Server with ID: " + serverId + " initialize at address: " + serverAddr + ':' + serverPort);
     }
@@ -88,7 +92,7 @@ public class PaxosLogServer {
      */
     private void createSendSocketsForReplicasIfNecessary() {
         // If all replicas sending sockets are alive and # of those equal to 2f, we no longer
-        if (areAllSendSocketsAlive() && allReplicaSendSockets.size() == totalNumOfReplicas - 1) {
+        if (areAllSendSocketsAlive() && allReplicaSendSockets.size() == totalNumOfReplicas) {
             return;
         } else {
             createSendSocketsForReplicas();
@@ -100,9 +104,6 @@ public class PaxosLogServer {
      */
     private void createSendSocketsForReplicas() {
         for (int i = 0; i < allReplicasInfo.size(); i++) {
-            if (serverId == i) {    // we should never create a socket connect to itself
-                continue;
-            }
             try {
                 if (!containSendSockets(allReplicasInfo.get(i))) {
                     final Socket socket = new Socket(allReplicasInfo.get(i).getIp(), allReplicasInfo.get(i).getPort());
@@ -196,7 +197,8 @@ public class PaxosLogServer {
                 String line;
                 while ((line = super.bufferedReader.readLine()) != null) {
                     System.out.println(line);
-                    tracker.setLatestReceivedTimeStamp(Long.parseLong(line.split(":")[1]));
+                    updateViewNumber(Integer.parseInt(line.split(":")[1]));
+                    tracker.setLatestReceivedTimeStamp(Long.parseLong(line.split(":")[2]));
                     messageQueue.offer(new Message(line));
                 }
             } catch (Exception e) {
@@ -205,11 +207,18 @@ public class PaxosLogServer {
         }
     }
 
+    private void increaseViewNumber() {
+        this.viewNumber += 1;
+    }
+
+    private void updateViewNumber(final int newViewNumber) {
+        this.viewNumber = newViewNumber > this.viewNumber ? newViewNumber : this.viewNumber;
+    }
+
     private void tryToBecomeLeader() {
-        if (getCurrentLeader() + 1 == this.serverId) {
+        if (getCurrentLeader() == this.serverId) {
             System.out.println("Proposer " + serverId + " is trying to become leader");
             this.isLeader = true;
-            this.viewNumber += 1;
         }
     }
 
@@ -239,11 +248,13 @@ public class PaxosLogServer {
         @Override
         public void run() {
             while(true) {
+                if (getCurrentLeader() != serverId) {
+                    isLeader = false;
+                }
                 if (isLeader) {
                     try {
                         final long currentTimeStamp = System.currentTimeMillis();
-                        System.out.println(currentTimeStamp);
-                        broadcastToAllReplicas("HEART_BEAT:" + currentTimeStamp);
+                        broadcastToAllReplicas("HEART_BEAT:" + viewNumber + ":" + currentTimeStamp);
                         Thread.sleep(HEART_BEAT_PERIOD_MILLS);
                     } catch (Exception e) {
                         e.printStackTrace();

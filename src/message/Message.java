@@ -6,7 +6,7 @@ package message;
 public class Message {
     /**
      *  Examples:
-     *  HeartBeat Message: "HEART_BEAT:1539876988101", note that "1539876988101" is the timestamp.
+     *  HeartBeat Message: "HEART_BEAT:0:1539876988101", note that "0" is the view number and "1539876988101" is the timestamp.
      */
     private final String messageLiteral;
     public enum MESSAGE_TYPE {
