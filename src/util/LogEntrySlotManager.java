@@ -27,4 +27,28 @@ public class LogEntrySlotManager {
         }
         this.logEntryArray = newLogEntryArray;
     }
+
+    public int getFirstUnchosenIndex() {
+        return firstUnchosenIndex;
+    }
+
+    public void setFirstUnchosenIndex(int firstUnchosenIndex) {
+        this.firstUnchosenIndex = firstUnchosenIndex;
+    }
+
+    public int getLastLogIndex() {
+        return lastLogIndex;
+    }
+
+    public void setLastLogIndex(int lastLogIndex) {
+        this.lastLogIndex = lastLogIndex;
+    }
+
+    public int getMinProposal() {
+        return minProposal;
+    }
+
+    public void setMinProposal(int minProposal) {
+        this.minProposal = minProposal;
+    }
 }
