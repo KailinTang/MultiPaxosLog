@@ -1,5 +1,21 @@
 package message;
 
+/**
+ * SERVER_TO_CLIENT
+ *
+ *      NACK Message: "SERVER_TO_CLIENT:NACK:2"
+ *      note that
+ *          "2" denotes the ID of current leader
+ *
+ *      ACK Message: "SERVER_TO_CLIENT:ACK"
+ *      note that
+ *          this message indicates that the client find the correct leader
+ *
+ *      Response Message: "SERVER_TO_CLIENT:RESPONSE:23"
+ *      note that
+ *          "23" denotes the sequence number of the message that send to server before
+ */
+
 public class ServerToClientMsg extends Message {
 
     public enum SERVER_TO_CLIENT_TYPE {

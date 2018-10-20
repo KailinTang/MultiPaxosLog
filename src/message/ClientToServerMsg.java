@@ -1,5 +1,20 @@
 package message;
 
+/**
+ * CLIENT_TO_SERVER
+ *
+ *      Hello Message: "CLIENT_TO_SERVER:1539876988101:HELLO:68.232.15.233:28779"
+ *      note that
+ *          "1539876988101" denotes the client ID
+ *          "68.232.15.233" and "28779" denotes the IP address and port number for which the client is listening
+ *
+ *      Chat Message: "CLIENT_TO_SERVER:CHAT:1539876988101:23:Hi there!"
+ *      note that
+ *          "1539876988101" denotes the client ID
+ *          "23" represents the sequence number of current message
+ *          "Hi there" is the message literal
+ */
+
 public class ClientToServerMsg extends Message {
 
     public enum CLIENT_TO_SERVER_TYPE {
@@ -20,10 +35,13 @@ public class ClientToServerMsg extends Message {
     }
 
     public static class HelloMsg extends Message {
+
+        private final long clientID;
         private final String listeningIPAddr;
         private final int listeningPort;
 
-        public HelloMsg(String listeningIPAddr, int listeningPort) {
+        public HelloMsg(long clientID, String listeningIPAddr, int listeningPort) {
+            this.clientID = clientID;
             this.listeningIPAddr = listeningIPAddr;
             this.listeningPort = listeningPort;
             this.messageType = MESSAGE_TYPE.CLIENT_TO_SERVER;
@@ -36,7 +54,11 @@ public class ClientToServerMsg extends Message {
 
         public static HelloMsg fromString(final String messageLiteral) {
             final String[] subStrArr = messageLiteral.split(":");
-            return new HelloMsg(subStrArr[2], Integer.parseInt(subStrArr[3]));
+            return new HelloMsg(Long.parseLong(subStrArr[2]), subStrArr[3], Integer.parseInt(subStrArr[4]));
+        }
+
+        public long getClientID() {
+            return clientID;
         }
 
         public String getListeningIPAddr() {
@@ -67,8 +89,9 @@ public class ClientToServerMsg extends Message {
 
         public static ChatMsg fromString(final String messageLiteral) {
             final String[] subStrArr = messageLiteral.split(":");
-            final StringBuilder builder = new StringBuilder();
-            for (int i = 4; i < subStrArr.length; i++) {
+            final StringBuilder builder = new StringBuilder(subStrArr[4]);
+            for (int i = 5; i < subStrArr.length; i++) {
+                builder.append(':');
                 builder.append(subStrArr[i]);
             }
             return new ChatMsg(Long.parseLong(subStrArr[2]), Integer.parseInt(subStrArr[3]), builder.toString());

@@ -201,7 +201,6 @@ public class PaxosLogServer {
                         updateViewNumber(Integer.parseInt(line.split(":")[1]));
                         tracker.setLatestReceivedTimeStamp(Long.parseLong(line.split(":")[2]));
                     }
-                    messageQueue.offer(new Message(line));
                 }
             } catch (Exception e) {
                 e.printStackTrace();

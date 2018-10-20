@@ -8,8 +8,9 @@ public abstract class Message {
      * Examples:
      * CLIENT_TO_SERVER
      *
-     *      Hello Message: "CLIENT_TO_SERVER:HELLO:68.232.15.233:28779"
+     *      Hello Message: "CLIENT_TO_SERVER:1539876988101:HELLO:68.232.15.233:28779"
      *      note that
+     *          "1539876988101" denotes the client ID
      *          "68.232.15.233" and "28779" denotes the IP address and port number for which the client is listening
      *
      *      Chat Message: "CLIENT_TO_SERVER:CHAT:1539876988101:23:Hi there!"
@@ -60,6 +61,8 @@ public abstract class Message {
      *          "0" represents the round number
      *          "1" denotes the index
      *          "7" means the first unchosen index
+     *          "1539876988101" means the client ID
+     *          "45" indicates the message's sequence number
      *          "Hello" means the value
      *
      *      Accept Response Message: "ACCEPT_RESPONSE:23:10:2:1539876988101:45"
@@ -105,6 +108,14 @@ public abstract class Message {
     public Message(String messageLiteral) {
         this.messageLiteral = messageLiteral;
         this.messageType = getMessageType(messageLiteral);
+    }
+
+    public String getMessageLiteral() {
+        return messageLiteral;
+    }
+
+    public MESSAGE_TYPE getMessageType() {
+        return messageType;
     }
 
     public static MESSAGE_TYPE getMessageType(final String messageLiteral) {
