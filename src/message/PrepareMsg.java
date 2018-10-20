@@ -29,7 +29,7 @@ public class PrepareMsg extends Message {
         return this.messageLiteral;
     }
 
-    public PrepareMsg fromString(final String messageLiteral) {
+    public static PrepareMsg fromString(final String messageLiteral) {
         final String[] subStrArr = messageLiteral.split(":");
         return new PrepareMsg(Integer.parseInt(subStrArr[1]), Integer.parseInt(subStrArr[2]), Long.parseLong(subStrArr[3]), Integer.parseInt(subStrArr[4]));
     }

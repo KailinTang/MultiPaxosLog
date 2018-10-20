@@ -42,7 +42,7 @@ public class AcceptMsg extends Message {
         return this.messageLiteral;
     }
 
-    public AcceptMsg fromString(final String messageLiteral) {
+    public static AcceptMsg fromString(final String messageLiteral) {
         final String[] subStrArr = messageLiteral.split(":");
         final StringBuilder builder = new StringBuilder(subStrArr[6]);
         for (int i = 7; i < subStrArr.length; i++) {

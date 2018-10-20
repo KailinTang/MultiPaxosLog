@@ -21,7 +21,7 @@ public class HeartBeatMsg extends Message {
         return this.messageLiteral;
     }
 
-    public HeartBeatMsg fromString(final String messageLiteral) {
+    public static HeartBeatMsg fromString(final String messageLiteral) {
         final String[] subStrArr = messageLiteral.split(":");
         return new HeartBeatMsg(Integer.parseInt(subStrArr[1]), Long.parseLong(subStrArr[2]));
     }

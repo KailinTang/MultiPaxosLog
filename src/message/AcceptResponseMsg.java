@@ -32,7 +32,7 @@ public class AcceptResponseMsg extends Message {
         return this.messageLiteral;
     }
 
-    public AcceptResponseMsg fromString(final String messageLiteral) {
+    public static AcceptResponseMsg fromString(final String messageLiteral) {
         final String[] subStrArr = messageLiteral.split(":");
         return new AcceptResponseMsg(
                 Integer.parseInt(subStrArr[1]),

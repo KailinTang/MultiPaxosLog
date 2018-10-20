@@ -23,7 +23,7 @@ public class SuccessMsg extends Message {
         return this.messageLiteral;
     }
 
-    public SuccessMsg fromString(final String messageLiteral) {
+    public static SuccessMsg fromString(final String messageLiteral) {
         final String[] subStrArr = messageLiteral.split(":");
         final StringBuilder builder = new StringBuilder(subStrArr[2]);
         for (int i = 3; i < subStrArr.length; i++) {

@@ -26,7 +26,7 @@ public class SuccessResponseMsg extends Message {
         return this.messageLiteral;
     }
 
-    public SuccessResponseMsg fromString(final String messageLiteral) {
+    public static SuccessResponseMsg fromString(final String messageLiteral) {
         final String[] subStrArr = messageLiteral.split(":");
         return new SuccessResponseMsg(
                 Integer.parseInt(subStrArr[1]),

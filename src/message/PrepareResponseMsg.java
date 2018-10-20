@@ -54,7 +54,7 @@ public class PrepareResponseMsg extends Message {
         return this.messageLiteral;
     }
 
-    public PrepareResponseMsg fromString(final String messageLiteral) {
+    public static PrepareResponseMsg fromString(final String messageLiteral) {
         final String[] subStrArr = messageLiteral.split(":");
         if (subStrArr[7].equals("|EMPTY_MESSAGE|")) {
             return new PrepareResponseMsg(
