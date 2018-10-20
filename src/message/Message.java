@@ -3,7 +3,7 @@ package message;
 /**
  * A Message class models every message pass across the clients and replicas with a string literal for simplicity
  */
-public class Message {
+public abstract class Message {
     /**
      * Examples:
      * CLIENT_TO_SERVER
@@ -15,7 +15,8 @@ public class Message {
      *      Chat Message: "CLIENT_TO_SERVER:CHAT:1539876988101:23:Hi there!"
      *      note that
      *          "1539876988101" denotes the client ID
-     *          "23" represents the sequence number of current message and "Hi there" is the message literal.
+     *          "23" represents the sequence number of current message
+     *          "Hi there" is the message literal
      *
      * SERVER_TO_CLIENT
      *
@@ -93,8 +94,13 @@ public class Message {
         SUCCESS_RESPONSE,
     }
 
-    private final String messageLiteral;
-    private final MESSAGE_TYPE messageType;
+    protected String messageLiteral;
+    protected MESSAGE_TYPE messageType;
+
+    public Message() {
+        this.messageLiteral = null;
+        this.messageType = null;
+    }
 
     public Message(String messageLiteral) {
         this.messageLiteral = messageLiteral;
@@ -126,10 +132,4 @@ public class Message {
                 throw new IllegalArgumentException("Can not detect message type!");
         }
     }
-
-    public static Message parseFromString(final String messageLiteral) {
-        return null;
-    }
-
-
 }
