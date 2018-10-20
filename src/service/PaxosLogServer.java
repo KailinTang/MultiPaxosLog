@@ -1,6 +1,9 @@
 package service;
 
+import message.ClientToServerMsg;
+import message.HeartBeatMsg;
 import message.Message;
+import message.ServerToClientMsg;
 import thread.HeartBeatTracker;
 import thread.ThreadHandler;
 import util.AddressPortPair;
@@ -35,9 +38,16 @@ public class PaxosLogServer {
     private final double messageLossRate;
 
     private final List<Socket> allReceiveSockets;
-    private final List<Socket> allReplicaSendSockets;
-    private final Map<AddressPortPair, Socket> allClientSendSockets;
-    private final Queue<Message> messageQueue;
+
+    // for allReplicaSendSockets, the key is the replica ID and value is the socket used to send message to other replicas
+    private final Map<Integer, Socket> allReplicaSendSockets;
+
+    // for allClientSendSockets, the key is the client ID and value is the socket used to send message to client
+    private final Map<Long, Socket> allClientSendSockets;
+
+
+    private final Queue<String> messageQueue;
+    private final Queue<String> clientChatMessageQueue;
 
     private final HeartBeatTracker tracker;
     private final LogWriter logWriter;
@@ -62,9 +72,10 @@ public class PaxosLogServer {
         this.skipSlotSeqNum = skipSlotSeqNum;
         this.messageLossRate = messageLossRate;
         this.allReceiveSockets = new Vector<>();
-        this.allReplicaSendSockets = new Vector<>();
+        this.allReplicaSendSockets = new ConcurrentHashMap<>();
         this.allClientSendSockets = new ConcurrentHashMap<>();
         this.messageQueue = new ConcurrentLinkedQueue<>();
+        this.clientChatMessageQueue = new ConcurrentLinkedQueue<>();
         this.tracker = new HeartBeatTracker(
                 this::increaseViewNumber,
                 this::tryToBecomeLeader,
@@ -105,10 +116,10 @@ public class PaxosLogServer {
     private void createSendSocketsForReplicas() {
         for (int i = 0; i < allReplicasInfo.size(); i++) {
             try {
-                if (!containSendSockets(allReplicasInfo.get(i))) {
+                if (!allReplicaSendSockets.containsKey(i)) {
                     final Socket socket = new Socket(allReplicasInfo.get(i).getIp(), allReplicasInfo.get(i).getPort());
                     if (socket != null && socket.isConnected()) {
-                        allReplicaSendSockets.add(socket);
+                        allReplicaSendSockets.put(i, socket);
                     }
                 }
             } catch (Exception e) {
@@ -125,28 +136,14 @@ public class PaxosLogServer {
         if (allReplicaSendSockets.size() == 0) {
             return false;
         }
-        for (final Socket socket : this.allReplicaSendSockets) {
-            if (!socket.isConnected()) {
-                allReplicaSendSockets.remove(socket);   // remove the dead sockets if necessary
+        for (final Integer replicaID : this.allReplicaSendSockets.keySet()) {
+            if (!allReplicaSendSockets.get(replicaID).isConnected()) {
+                allReplicaSendSockets.remove(replicaID);   // remove the dead sockets if necessary
                 return false;
             }
         }
         return true;
     }
-
-    /**
-     * @param sendAddressPortPair Input address port pair
-     * @return Whether we have already create a socket for the given address port pair
-     */
-    private boolean containSendSockets(final AddressPortPair sendAddressPortPair) {
-        for (final Socket socket : this.allReplicaSendSockets) {
-            if (socket.getInetAddress().getHostAddress().equals(sendAddressPortPair.getIp()) && socket.getPort() == sendAddressPortPair.getPort()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
 
     /**
      * A worker for listening the port of server and create receiving sockets for any incoming sockets (client & other replicas)
@@ -197,14 +194,69 @@ public class PaxosLogServer {
                 String line;
                 while ((line = super.bufferedReader.readLine()) != null) {
                     System.out.println(line);
-                    if (Message.getMessageType(line).equals(Message.MESSAGE_TYPE.HEART_BEAT)) {
-                        updateViewNumber(Integer.parseInt(line.split(":")[1]));
-                        tracker.setLatestReceivedTimeStamp(Long.parseLong(line.split(":")[2]));
+                    switch (Message.getMessageType(line)) {
+                        case CLIENT_TO_SERVER:
+                            switch (ClientToServerMsg.getClientToServerType(line)) {
+                                case HELLO:
+                                    handleClientHello(ClientToServerMsg.HelloMsg.fromString(line));
+                                    break;
+                                case CHAT:
+                                    clientChatMessageQueue.offer(line);
+                                    break;
+                                default:
+                                    throw new IllegalStateException("Unresolvable client to server message!");
+                            }
+                            break;
+                        case SERVER_TO_CLIENT:
+                            throw new IllegalStateException("Server should never receive the message that supposed to be sent to client!");
+                        case HEART_BEAT:
+                            handleClientHeartBeat(HeartBeatMsg.fromString(line));
+                            break;
+                        case PREPARE:
+                        case PREPARE_RESPONSE:
+                        case ACCEPT:
+                        case ACCEPT_RESPONSE:
+                        case SUCCESS:
+                        case SUCCESS_RESPONSE:
+                            messageQueue.offer(line);
+                        default:
+                            throw new IllegalStateException("Unresolvable message received!");
                     }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    private void handleClientHeartBeat(final HeartBeatMsg heartBeatMsg) {
+        updateViewNumber(heartBeatMsg.getViewNumber());
+        tracker.setLatestReceivedTimeStamp(heartBeatMsg.getTimeStamp());
+    }
+
+    private void handleClientHello(final ClientToServerMsg.HelloMsg helloMsg) {
+        if (!allClientSendSockets.containsKey(helloMsg.getClientID())) {
+            try {
+                final Socket clientSocket = new Socket(helloMsg.getListeningIPAddr(), helloMsg.getListeningPort());
+                if (clientSocket != null && clientSocket.isConnected()) {
+                    allClientSendSockets.put(helloMsg.getClientID(), clientSocket);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.out.println("Failed to connect to client with " + helloMsg.getListeningIPAddr() + ":" + helloMsg.getListeningPort());
+            }
+        }
+        final Socket clientSocket = allClientSendSockets.get(helloMsg.getClientID());
+        try {
+            final PrintWriter writer = new PrintWriter(clientSocket.getOutputStream(), true);
+            if (isLeader) {
+                writer.println(new ServerToClientMsg.ServerAckMsg().toString());
+            } else {
+                writer.println(new ServerToClientMsg.ServerNackMsg(getCurrentLeader()).toString());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Fail to send message to client");
         }
     }
 
@@ -235,7 +287,7 @@ public class PaxosLogServer {
      */
     private void broadcastToAllReplicas(final String message) throws IOException {
         createSendSocketsForReplicasIfNecessary();
-        for (final Socket replicaSendSocket : allReplicaSendSockets) {
+        for (final Socket replicaSendSocket : allReplicaSendSockets.values()) {
             final PrintWriter writer = new PrintWriter(replicaSendSocket.getOutputStream(), true);
             writer.println(message);
         }
@@ -248,7 +300,7 @@ public class PaxosLogServer {
 
         @Override
         public void run() {
-            while(true) {
+            while (true) {
                 if (getCurrentLeader() != serverId) {
                     isLeader = false;
                 }
