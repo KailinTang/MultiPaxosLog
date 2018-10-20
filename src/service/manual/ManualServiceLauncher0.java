@@ -1,11 +1,12 @@
-package service;
+package service.manual;
 
+import service.PaxosLogServer;
 import util.AddressPortPair;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class ServiceLauncher {
+public class ManualServiceLauncher0 {
 
     public static void main(String[] args) {
         final List<AddressPortPair> allReplicasInfo = new ArrayList<>();
