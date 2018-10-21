@@ -1,38 +1,23 @@
 package client;
 
-import java.io.IOException;
-import java.util.Scanner;
+
+import util.AddressPortPair;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ClientLauncher {
 
-    private PaxosLogClient paxosLogClient;
+    public static void main(String args[]) {
 
-    public void setPaxosLogClient(PaxosLogClient paxosLogClient) {
-        this.paxosLogClient = paxosLogClient;
+        final List<AddressPortPair> allReplicasInfo = new ArrayList<>();
+        allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3057));
+        allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3058));
+        allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3059));
+
+        final PaxosLogClient logClient = new PaxosLogClient("127.0.0.1", 3060, allReplicasInfo);
+
+        logClient.start();
     }
 
-    public PaxosLogClient getPaxosLogClient() {
-        return paxosLogClient;
-    }
-
-    public static void main(String[] args) {
-        final ClientLauncher clientLauncher = new ClientLauncher();
-        try {
-            clientLauncher.setPaxosLogClient(new PaxosLogClient("127.0.0.1", 3057));
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println("PaxosLogClient initialization failure!");
-        }
-        final Scanner scanner = new Scanner(System.in);
-        final PaxosLogClient client = clientLauncher.getPaxosLogClient();
-        while (true) {
-            client.write(scanner.nextLine());
-            try {
-                System.out.println(client.read());
-            } catch (IOException e) {
-                e.printStackTrace();
-                System.out.println("Fail to receive message from server!");
-            }
-        }
-    }
 }

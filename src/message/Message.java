@@ -8,7 +8,7 @@ public abstract class Message {
      * Examples:
      * CLIENT_TO_SERVER
      *
-     *      Hello Message: "CLIENT_TO_SERVER:1539876988101:HELLO:68.232.15.233:28779"
+     *      Hello Message: "CLIENT_TO_SERVER:HELLO:1539876988101:68.232.15.233:28779"
      *      note that
      *          "1539876988101" denotes the client ID
      *          "68.232.15.233" and "28779" denotes the IP address and port number for which the client is listening
