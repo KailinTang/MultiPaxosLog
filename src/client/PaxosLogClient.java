@@ -1,6 +1,5 @@
 package client;
 
-
 import java.io.IOException;
 
 import message.ClientToServerMsg;
@@ -12,19 +11,14 @@ import util.AddressPortPair;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.List;
-import java.util.Queue;
-import java.util.Vector;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.Scanner;
 
 
 public class PaxosLogClient {
+
+    private final static long TIME_OUT_RETRANSMIT_PERIOD = 10000;
 
     private final long clientId;
     private final String clientAddr;
@@ -33,10 +27,17 @@ public class PaxosLogClient {
 
     private final int totalNumOfReplicas;
     private final List<AddressPortPair> allReplicasInfo;
+
+    private final double messageLossRate;
+
     private boolean receivedLastSendMsgResponse;
     private int leaderServerID;
 
-    private final List<Socket> allReplicaSendSockets;
+    private final List<Socket> allReceiveSockets;
+
+    // for allClientSendSockets, the key is the replica ID and value is the socket used to send message to other replicas
+    private final Map<Integer, Socket> allClientSendSockets;
+
     private final Queue<ClientToServerMsg.ChatMsg> sendMessageQueue;
     private final Queue<String> receiveMessageQueue;
     private ClientToServerMsg.ChatMsg nextSendMsg;
@@ -47,18 +48,22 @@ public class PaxosLogClient {
     public PaxosLogClient(
             final String clientAddr,
             final int clientPort,
-            final List<AddressPortPair> allReplicasInfo
+            final List<AddressPortPair> allReplicasInfo,
+            final double messageLossRate
     ) {
         this.clientId = System.currentTimeMillis();
         this.clientAddr = clientAddr;
         this.clientPort = clientPort;
         this.clientSequence = 0;
         this.allReplicasInfo = allReplicasInfo;
+        this.messageLossRate = messageLossRate;
         this.totalNumOfReplicas = allReplicasInfo.size();
-        this.allReplicaSendSockets = new Vector<>();
+        this.allReceiveSockets = new Vector<>();
+        this.allClientSendSockets = new ConcurrentHashMap<>();
         this.receiveMessageQueue = new ConcurrentLinkedQueue<>();
         this.sendMessageQueue = new ConcurrentLinkedQueue<>();
-        this.receivedLastSendMsgResponse = false;
+        // at the beginning, we should never wait for the previous message
+        this.receivedLastSendMsgResponse = true;
         this.leaderServerID = 0;
         this.MsgHello = new ClientToServerMsg.HelloMsg(clientId, clientAddr, clientPort);
 
@@ -72,16 +77,16 @@ public class PaxosLogClient {
     public void start() {
         new Thread(new IncomingSocketHandler(clientPort)).start();
         new Thread(new ScannerHandler()).start();
-        createSendSocketsForReplicasIfNecessary();
-        queueHandler();
+        createSendSocketsForClientsIfNecessary();
+        runQueuesProcessor();
     }
 
     /**
      * Create replica sending sockets if we don't have 2f such sockets or some such sockets are died
      */
-    private void createSendSocketsForReplicasIfNecessary() {
+    private void createSendSocketsForClientsIfNecessary() {
         // If all replicas sending sockets are alive and # of those equal to 2f, we no longer
-        if (areAllSendSocketsAlive() && allReplicaSendSockets.size() == totalNumOfReplicas) {
+        if (areAllSendSocketsAlive() && allClientSendSockets.size() == totalNumOfReplicas) {
             return;
         } else {
             createSendSocketsForClients();
@@ -89,54 +94,38 @@ public class PaxosLogClient {
     }
 
     /**
-     * Create replica sending sockets if we don't have that connection and save it to allReplicaSendSockets
+     * Create replica sending sockets if we don't have that connection and save it to allClientSendSockets
      */
     private void createSendSocketsForClients() {
         for (int i = 0; i < allReplicasInfo.size(); i++) {
             try {
-                if (!containSendSockets(allReplicasInfo.get(i))) {
+                if (!allClientSendSockets.containsKey(i)) {
                     final Socket socket = new Socket(allReplicasInfo.get(i).getIp(), allReplicasInfo.get(i).getPort());
                     if (socket != null && socket.isConnected()) {
-                        allReplicaSendSockets.add(socket);
+                        allClientSendSockets.put(i, socket);
                     }
                 }
             } catch (Exception e) {
-                System.out.println("Replica whose address is " + allReplicasInfo.get(i).getIp()
+                System.out.println("Server whose address is " + allReplicasInfo.get(i).getIp()
                         + ':' + allReplicasInfo.get(i).getPort() + " is not accessible now");
             }
-        }
-        for (final Socket socket : this.allReplicaSendSockets) {
-            System.out.println(socket.getPort());
         }
     }
 
     /**
-     * @return Whether all sockets in allReplicaSendSockets are alive
+     * @return Whether all sockets in allClientSendSockets are alive
      */
     private boolean areAllSendSocketsAlive() {
-        if (allReplicaSendSockets.size() == 0) {
+        if (allClientSendSockets.size() == 0) {
             return false;
         }
-        for (final Socket socket : this.allReplicaSendSockets) {
-            if (!socket.isConnected()) {
-                allReplicaSendSockets.remove(socket);   // remove the dead sockets if necessary
+        for (final Integer replicaID : this.allClientSendSockets.keySet()) {
+            if (!allClientSendSockets.get(replicaID).isConnected()) {
+                allClientSendSockets.remove(replicaID);   // remove the dead sockets if necessary
                 return false;
             }
         }
         return true;
-    }
-
-    /**
-     * @param sendAddressPortPair Input address port pair
-     * @return Whether we have already create a socket for the given address port pair
-     */
-    private boolean containSendSockets(final AddressPortPair sendAddressPortPair) {
-        for (final Socket socket : this.allReplicaSendSockets) {
-            if (socket.getInetAddress().getHostAddress().equals(sendAddressPortPair.getIp()) && socket.getPort() == sendAddressPortPair.getPort()) {
-                return true;
-            }
-        }
-        return false;
     }
 
 
@@ -144,7 +133,6 @@ public class PaxosLogClient {
      * A worker for listening the port of server and create receiving sockets for any incoming sockets (client & other replicas)
      * Note that the sockets created in this worker is only responsible for receiving messages
      */
-
     public class IncomingSocketHandler implements Runnable {
 
         private ServerSocket serverSocket;
@@ -163,8 +151,8 @@ public class PaxosLogClient {
         public void run() {
             while (true) {
                 try {
-                    Socket acceptedSocket = serverSocket.accept();
-                    // allReceiveSockets.add(acceptedSocket);
+                    final Socket acceptedSocket = serverSocket.accept();
+                    allReceiveSockets.add(acceptedSocket);
                     new Thread(new ReceiveMessageHandler(acceptedSocket)).start();
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -198,9 +186,9 @@ public class PaxosLogClient {
         }
     }
 
-    /* Create worker to deal with input message from scanner and send to leader*/
-
-
+    /**
+     * A worker to deal with input message from scanner and cache it in the sendMessageQueue
+     */
     public class ScannerHandler implements Runnable {
 
         private Scanner scanner;
@@ -221,13 +209,8 @@ public class PaxosLogClient {
                 try {
                     String nextLine = scanner.nextLine();
                     sendMessageQueue.offer(new ClientToServerMsg.ChatMsg(clientId, clientSequence, nextLine));
-                    clientSequence += 1;
                     System.out.println("client want to send message: " + nextLine);
-                    System.out.println("is connected " + allReplicaSendSockets.get(0).isConnected());
-                    System.out.println("is closed " + allReplicaSendSockets.get(0).isClosed());
-                    if (sendMessageQueue.size() == 1) {
-                        receivedLastSendMsgResponse = true;
-                    }
+                    clientSequence += 1;
                 } catch (Exception e) {
                     e.printStackTrace();
                     System.out.println("Fail to add msg to sendMessageQueue");
@@ -236,10 +219,10 @@ public class PaxosLogClient {
         }
     }
 
-
-    /*create main process to handle msg in sendMessageQueue and receiveMessageQueue*/
-
-    public void queueHandler() {
+    /**
+     * Handle messages in sendMessageQueue and receiveMessageQueue
+     */
+    public void runQueuesProcessor() {
 
         while (true) {
             if (receivedLastSendMsgResponse == true) {
@@ -252,14 +235,12 @@ public class PaxosLogClient {
 
             String nextString = receiveMessageQueue.poll();
             if (nextString != null && Message.getMessageType(nextString) == Message.MESSAGE_TYPE.SERVER_TO_CLIENT) {
-                System.out.println("is connected " + allReplicaSendSockets.get(0).isConnected());
-                System.out.println("is closed " + allReplicaSendSockets.get(0).isClosed());
                 switch (ServerToClientMsg.getServerToClientType(nextString)) {
                     case ACK:
                         nextMsg = ServerToClientMsg.ServerAckMsg.fromString(nextString);
                         try {
-                            PrintWriter leaderPrintWriter = new PrintWriter(allReplicaSendSockets.get(leaderServerID).getOutputStream(), true);
-                            new WaitRepeatSend(nextSendMsg, leaderPrintWriter, 5);
+                            PrintWriter leaderPrintWriter = new PrintWriter(allClientSendSockets.get(leaderServerID).getOutputStream(), true);
+                            new ReTransmitScheduler(nextSendMsg, leaderPrintWriter, TIME_OUT_RETRANSMIT_PERIOD);
                         } catch (Exception e) {
                             e.printStackTrace();
                             System.out.printf("build printWriter failed for index %s", leaderServerID);
@@ -270,9 +251,8 @@ public class PaxosLogClient {
                         nextMsg = ServerToClientMsg.ServerNackMsg.fromString(nextString);
                         try {
                             leaderServerID = ((ServerToClientMsg.ServerNackMsg) nextMsg).getCurrentLeaderId();
-                            PrintWriter printWriterRandom = new PrintWriter(allReplicaSendSockets.get(leaderServerID).getOutputStream(), true);
+                            PrintWriter printWriterRandom = new PrintWriter(allClientSendSockets.get(leaderServerID).getOutputStream(), true);
                             printWriterRandom.println(MsgHello);
-                            printWriterRandom.close();
                         } catch (Exception e) {
                             e.printStackTrace();
                             System.out.printf("build printWriter failed for index %s", leaderServerID);
@@ -286,7 +266,6 @@ public class PaxosLogClient {
                         } else {
                             throw new IllegalStateException("received inconsistent message response");
                         }
-
                         break;
                     default:
                         throw new IllegalArgumentException("Can not detect message type in message queue");
@@ -305,39 +284,34 @@ public class PaxosLogClient {
     public void sendNextMsg() {
 
         try {
-            find_leader();
+            findLeader();
         } catch (Exception e) {
             e.printStackTrace();
             System.out.println("Find leader failed");
         }
-
-
     }
 
     /*define the function to find leader*/
 
-    public void find_leader() {
-//         Random random = new Random();
-//         int randomIndex = random.nextInt(allReplicasInfo.size());
-//         leaderServerID = randomIndex;
-
+    public void findLeader() {
 
         try {
-            PrintWriter printWriterRandom = new PrintWriter(allReplicaSendSockets.get(leaderServerID).getOutputStream(), true);
+            PrintWriter printWriterRandom = new PrintWriter(allClientSendSockets.get(leaderServerID).getOutputStream(), true);
             printWriterRandom.println(MsgHello.toString());
-            printWriterRandom.close();
         } catch (Exception e) {
             e.printStackTrace();
             System.out.printf("build printwriter failed for index %s", leaderServerID);
         }
 
-
     }
 
+    /**
+     * A retransmit task that can be executed periodically if timeout
+     */
     public class WaitRepeatSendTask extends TimerTask {
 
-        ClientToServerMsg.ChatMsg curMsg;
-        PrintWriter leaderPrintWriter;
+        final ClientToServerMsg.ChatMsg curMsg;
+        final PrintWriter leaderPrintWriter;
 
         public WaitRepeatSendTask(ClientToServerMsg.ChatMsg curMsg, PrintWriter leaderPrintWriter) {
             this.curMsg = curMsg;
@@ -349,23 +323,25 @@ public class PaxosLogClient {
 
             if (curMsg == sendMessageQueue.peek()) {
                 leaderPrintWriter.println(curMsg.toString());
-                System.out.println("is connected " + allReplicaSendSockets.get(0).isConnected());
-                System.out.println("is closed " + allReplicaSendSockets.get(0).isClosed());
             } else {
-                leaderPrintWriter.close();
-                cancel();
+                super.cancel();
             }
         }
     }
 
-    public class WaitRepeatSend {
-        Timer timer;
 
-        public WaitRepeatSend(ClientToServerMsg.ChatMsg curMsg, PrintWriter leaderPrintWriter, int seconds) {
+    /**
+     * A scheduler executing message retransmit if we do not receive response from server (timeout)
+     */
+    public class ReTransmitScheduler {
+
+        final Timer timer;
+
+        public ReTransmitScheduler(ClientToServerMsg.ChatMsg curMsg, PrintWriter leaderPrintWriter, long millSeconds) {
             timer = new Timer();
-            Calendar calendar = Calendar.getInstance();
-            Date time = calendar.getTime();
-            timer.schedule(new WaitRepeatSendTask(curMsg, leaderPrintWriter), time, seconds * 10);
+            final Calendar calendar = Calendar.getInstance();
+            final Date time = calendar.getTime();
+            timer.schedule(new WaitRepeatSendTask(curMsg, leaderPrintWriter), time, millSeconds);
         }
     }
 }
