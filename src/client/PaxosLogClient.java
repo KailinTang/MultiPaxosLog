@@ -252,7 +252,7 @@ public class PaxosLogClient {
                         nextMsg = ServerToClientMsg.ServerAckMsg.fromString(nextString);
                         try {
                             PrintWriter leaderPrintWriter = new PrintWriter(allClientSendSockets.get(leaderServerID).getOutputStream(), true);
-                            leaderPrintWriter.println(nextMsg.toString());
+                            leaderPrintWriter.println(nextSendMsg.toString());
                             receivedNack = false;
                             new ReTransmitScheduler(nextSendMsg, TIME_OUT_RETRANSMIT_PERIOD);
                         } catch (Exception e) {
@@ -294,7 +294,7 @@ public class PaxosLogClient {
 
     public void sendHelloRandom() {
 
-        leaderServerID = randomServerId.nextInt();
+        leaderServerID = randomServerId.nextInt(totalNumOfReplicas);
         sendHello();
     }
 
@@ -302,6 +302,9 @@ public class PaxosLogClient {
     public void sendHello() {
         try {
             HelloID += 1;
+            System.out.println(allClientSendSockets.entrySet().size());
+            System.out.println(allClientSendSockets.containsKey(leaderServerID));
+            System.out.println(leaderServerID);
             PrintWriter printWriterRandom = new PrintWriter(allClientSendSockets.get(leaderServerID).getOutputStream(), true);
             printWriterRandom.println(MsgHello.toString());
         } catch (Exception e) {

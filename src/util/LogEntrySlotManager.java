@@ -124,7 +124,7 @@ public class LogEntrySlotManager {
     }
 
     private void updateLastLogIndex() {
-        for (int i = logEntryArray.length; i >= 0; i--) {
+        for (int i = logEntryArray.length - 1; i >= 0; i--) {
             if (logEntryArray[i] != null) {
                 lastLogIndex = i;
             }
