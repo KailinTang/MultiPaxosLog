@@ -34,4 +34,16 @@ public class SuccessResponseMsg extends Message {
                 Integer.parseInt(subStrArr[3])
         );
     }
+
+    public int getFirstUnchosenIndexAfterUpdate() {
+        return firstUnchosenIndexAfterUpdate;
+    }
+
+    public int getModifiedIndex() {
+        return modifiedIndex;
+    }
+
+    public int getResponseServerID() {
+        return responseServerID;
+    }
 }

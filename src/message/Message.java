@@ -58,7 +58,7 @@ public abstract class Message {
      *
      *      Accept Message: "ACCEPT:0:1:7:1539876988101:45:Hello"
      *      note that
-     *          "0" represents the round number
+     *          "0" represents the round number (proposal ID)
      *          "1" denotes the index
      *          "7" means the first unchosen index
      *          "1539876988101" means the client ID

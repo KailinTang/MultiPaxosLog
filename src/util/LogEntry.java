@@ -2,6 +2,7 @@ package util;
 
 public class LogEntry {
 
+    // one log entry will be chosen if and only if acceptedProposal = Integer.MAX_VALUE
     private int acceptedProposal;
     private String acceptedValue;
 

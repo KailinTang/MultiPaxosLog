@@ -14,6 +14,7 @@ import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Random;
 
 
 public class PaxosLogClient {
@@ -45,6 +46,11 @@ public class PaxosLogClient {
 
     private final ClientToServerMsg.HelloMsg MsgHello;
 
+    private final Random randomServerId;
+    private boolean receivedNack;
+    private final Map<Integer, Boolean> ReceivedResponseForHello;
+    private int HelloID;
+
     public PaxosLogClient(
             final String clientAddr,
             final int clientPort,
@@ -66,6 +72,10 @@ public class PaxosLogClient {
         this.receivedLastSendMsgResponse = true;
         this.leaderServerID = 0;
         this.MsgHello = new ClientToServerMsg.HelloMsg(clientId, clientAddr, clientPort);
+        this.randomServerId = new Random(totalNumOfReplicas);
+        this.receivedNack = false;
+        this.ReceivedResponseForHello = new HashMap<>();
+        this.HelloID = 0;
 
         System.out.println("Client with ID: " + clientId + " initialize at address: " + clientAddr + ':' + clientPort);
     }
@@ -229,7 +239,8 @@ public class PaxosLogClient {
                 nextSendMsg = sendMessageQueue.peek();
                 if (nextSendMsg != null) {
                     receivedLastSendMsgResponse = false;
-                    sendNextMsg();
+                    sendHelloRandom();
+                    new ReTransmitSchedulerHello(HelloID, TIME_OUT_RETRANSMIT_PERIOD);
                 }
             }
 
@@ -237,10 +248,13 @@ public class PaxosLogClient {
             if (nextString != null && Message.getMessageType(nextString) == Message.MESSAGE_TYPE.SERVER_TO_CLIENT) {
                 switch (ServerToClientMsg.getServerToClientType(nextString)) {
                     case ACK:
+                        ReceivedResponseForHello.put(HelloID, true);
                         nextMsg = ServerToClientMsg.ServerAckMsg.fromString(nextString);
                         try {
                             PrintWriter leaderPrintWriter = new PrintWriter(allClientSendSockets.get(leaderServerID).getOutputStream(), true);
-                            new ReTransmitScheduler(nextSendMsg, leaderPrintWriter, TIME_OUT_RETRANSMIT_PERIOD);
+                            leaderPrintWriter.println(nextMsg.toString());
+                            receivedNack = false;
+                            new ReTransmitScheduler(nextSendMsg, TIME_OUT_RETRANSMIT_PERIOD);
                         } catch (Exception e) {
                             e.printStackTrace();
                             System.out.printf("build printWriter failed for index %s", leaderServerID);
@@ -248,15 +262,12 @@ public class PaxosLogClient {
                         }
                         break;
                     case NACK:
+                        receivedNack = true;
+                        ReceivedResponseForHello.put(HelloID, true);
                         nextMsg = ServerToClientMsg.ServerNackMsg.fromString(nextString);
-                        try {
-                            leaderServerID = ((ServerToClientMsg.ServerNackMsg) nextMsg).getCurrentLeaderId();
-                            PrintWriter printWriterRandom = new PrintWriter(allClientSendSockets.get(leaderServerID).getOutputStream(), true);
-                            printWriterRandom.println(MsgHello);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            System.out.printf("build printWriter failed for index %s", leaderServerID);
-                        }
+                        leaderServerID = ((ServerToClientMsg.ServerNackMsg) nextMsg).getCurrentLeaderId();
+                        sendHello();
+                        new ReTransmitSchedulerHello(HelloID, TIME_OUT_RETRANSMIT_PERIOD);
                         break;
                     case RESPONSE:
                         nextMsg = ServerToClientMsg.ServerResponseMsg.fromString(nextString);
@@ -281,29 +292,24 @@ public class PaxosLogClient {
     //
     //
 
-    public void sendNextMsg() {
+    public void sendHelloRandom() {
 
-        try {
-            findLeader();
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Find leader failed");
-        }
+        leaderServerID = randomServerId.nextInt();
+        sendHello();
     }
 
-    /*define the function to find leader*/
 
-    public void findLeader() {
-
+    public void sendHello() {
         try {
+            HelloID += 1;
             PrintWriter printWriterRandom = new PrintWriter(allClientSendSockets.get(leaderServerID).getOutputStream(), true);
             printWriterRandom.println(MsgHello.toString());
         } catch (Exception e) {
             e.printStackTrace();
-            System.out.printf("build printwriter failed for index %s", leaderServerID);
+            System.out.println("send Hello failed");
         }
-
     }
+
 
     /**
      * A retransmit task that can be executed periodically if timeout
@@ -311,18 +317,16 @@ public class PaxosLogClient {
     public class WaitRepeatSendTask extends TimerTask {
 
         final ClientToServerMsg.ChatMsg curMsg;
-        final PrintWriter leaderPrintWriter;
 
-        public WaitRepeatSendTask(ClientToServerMsg.ChatMsg curMsg, PrintWriter leaderPrintWriter) {
+        public WaitRepeatSendTask(ClientToServerMsg.ChatMsg curMsg) {
             this.curMsg = curMsg;
-            this.leaderPrintWriter = leaderPrintWriter;
         }
 
         @Override
         public void run() {
 
-            if (curMsg == sendMessageQueue.peek()) {
-                leaderPrintWriter.println(curMsg.toString());
+            if (curMsg == sendMessageQueue.peek() && !receivedNack) {
+                sendHelloRandom();
             } else {
                 super.cancel();
             }
@@ -337,11 +341,50 @@ public class PaxosLogClient {
 
         final Timer timer;
 
-        public ReTransmitScheduler(ClientToServerMsg.ChatMsg curMsg, PrintWriter leaderPrintWriter, long millSeconds) {
+        public ReTransmitScheduler(ClientToServerMsg.ChatMsg curMsg, long millSeconds) {
             timer = new Timer();
             final Calendar calendar = Calendar.getInstance();
+            calendar.add(Calendar.MILLISECOND, (int) millSeconds);
             final Date time = calendar.getTime();
-            timer.schedule(new WaitRepeatSendTask(curMsg, leaderPrintWriter), time, millSeconds);
+            timer.schedule(new WaitRepeatSendTask(curMsg), time, millSeconds);
         }
     }
+
+
+    public class WaitRepeatSendHello extends TimerTask {
+
+        int HelloID;
+
+        public WaitRepeatSendHello(int HelloID) {
+            this.HelloID = HelloID;
+        }
+
+        @Override
+        public void run() {
+
+            if (!ReceivedResponseForHello.get(HelloID)) {
+                sendHelloRandom();
+            } else {
+                super.cancel();
+            }
+        }
+    }
+
+
+    /**
+     * A scheduler executing message retransmit if we do not receive response from server (timeout)
+     */
+    public class ReTransmitSchedulerHello {
+
+        final Timer timer;
+
+        public ReTransmitSchedulerHello(int HelloID, long millSeconds) {
+            timer = new Timer();
+            final Calendar calendar = Calendar.getInstance();
+            calendar.add(Calendar.MILLISECOND, (int) millSeconds);
+            final Date time = calendar.getTime();
+            timer.schedule(new WaitRepeatSendHello(HelloID), time, millSeconds);
+        }
+    }
+
 }

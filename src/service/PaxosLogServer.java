@@ -1,22 +1,18 @@
 package service;
 
-import message.ClientToServerMsg;
-import message.HeartBeatMsg;
-import message.Message;
-import message.ServerToClientMsg;
+import message.*;
 import thread.HeartBeatTracker;
 import thread.ThreadHandler;
 import util.AddressPortPair;
+import util.ChatMessageIdentifier;
+import util.LogEntrySlotManager;
 import util.LogWriter;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Vector;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -52,6 +48,19 @@ public class PaxosLogServer {
     private final HeartBeatTracker tracker;
     private final LogWriter logWriter;
 
+    private final LogEntrySlotManager logEntrySlotManager;
+    private final Set<ChatMessageIdentifier> executedChatMessages;
+    private ClientToServerMsg.ChatMsg nextChatMsg;
+    private boolean prepared;
+    private ClientToServerMsg.ChatMsg WriteValueThisTime;
+    private int currentIndex;
+    private int nextIndex;
+    private int curProposalNumber;
+    private int maxRound;
+    private Set<Integer> ReceivedDistinctPrepareResponse;
+    private Set<Integer> ReceivedDistinctNoMoreAccepted;
+    private Set<Integer> ReceivedDistinctAcceptResponse;
+
     public PaxosLogServer(
             final int serverId,
             final String serverAddr,
@@ -82,6 +91,13 @@ public class PaxosLogServer {
                 System.currentTimeMillis(),
                 HEART_BEAT_PERIOD_MILLS);
         this.logWriter = new LogWriter(serverId);
+        this.logEntrySlotManager = new LogEntrySlotManager();
+        this.executedChatMessages = new HashSet<>();
+        this.prepared = false;
+        this.currentIndex = 0;
+        this.nextIndex = 1;
+        this.curProposalNumber = 0;
+        this.maxRound = 0;
         System.out.println("Server with ID: " + serverId + " initialize at address: " + serverAddr + ':' + serverPort);
     }
 
@@ -95,7 +111,13 @@ public class PaxosLogServer {
         createSendSocketsForReplicasIfNecessary();  // try to connect all other replicas at beginning
         heartBeatLogger.start();    // start heartbeat logger
         tracker.start();    // start heartbeat tracker
-
+        while (true) {
+            if (isLeader) {
+                actAsProposer();
+            } else {
+                actAsAcceptor();
+            }
+        }
     }
 
     /**
@@ -314,6 +336,391 @@ public class PaxosLogServer {
                     }
                 }
             }
+        }
+    }
+
+    private void actAsProposer() {
+        while (isLeader) {
+            String nextString = clientChatMessageQueue.poll();
+            while (nextString == null) {
+                nextString = clientChatMessageQueue.poll();
+            }
+            if (Message.getMessageType(nextString) == Message.MESSAGE_TYPE.CLIENT_TO_SERVER) {
+                if (ClientToServerMsg.getClientToServerType(nextString) == ClientToServerMsg.CLIENT_TO_SERVER_TYPE.CHAT) {
+                    nextChatMsg = ClientToServerMsg.ChatMsg.fromString(nextString);
+                } else {
+                    throw new IllegalStateException("wrong message type of CLIENT_TO_SERVER in clientChatMegQueue");
+                }
+            } else {
+                throw new IllegalStateException("wrong message type  in clientChatMegQueue");
+
+            }
+
+            if (executedChatMessages.contains(new ChatMessageIdentifier(nextChatMsg.getClientID(), nextChatMsg.getMessageSequenceNumber()))) {
+                break;
+            }
+
+            if (proposalWrite(nextChatMsg)) {
+
+                try {
+                    PrintWriter ClientPrintWriter = new PrintWriter(allClientSendSockets.get(nextChatMsg.getClientID()).getOutputStream(), true);
+                    ClientPrintWriter.println(new ServerToClientMsg.ServerResponseMsg(nextChatMsg.getMessageSequenceNumber()));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    System.out.printf("fail to build printWriter to client ID : %s", nextChatMsg.getClientID());
+                }
+
+            } else {
+                try {
+                    PrintWriter ClientPrintWriter = new PrintWriter(allClientSendSockets.get(nextChatMsg.getClientID()).getOutputStream(), true);
+                    ClientPrintWriter.println(new ServerToClientMsg.ServerNackMsg(getCurrentLeader()));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    System.out.printf("fail to build printWriter to client ID : %s", nextChatMsg.getClientID());
+                }
+
+            }
+        }
+
+
+    }
+
+    /**
+     * define Write(InputValue),
+     */
+
+    public boolean proposalWrite(ClientToServerMsg.ChatMsg InputValue) {
+        if (!isLeader) {
+            return false;
+        }
+        return proposalWriteNextIndex(InputValue);
+
+    }
+
+    public boolean proposalWriteNextIndex(ClientToServerMsg.ChatMsg InputValue) {
+        WriteValueThisTime = InputValue;
+        if (prepared == true) {
+            currentIndex = nextIndex;
+            nextIndex += 1;
+            return handleWhenPrepared(InputValue);
+        } else {
+            handlePrepare(InputValue);
+        }
+        handlePrepareResponse(InputValue);
+        return handleWhenPrepared(InputValue);
+    }
+
+    public boolean handleWhenPrepared(ClientToServerMsg.ChatMsg InputValue) {
+        handleAccept(InputValue);
+        handleAcceptResponse(InputValue);
+        if (prepared == false) {
+            return proposalWrite(InputValue);
+        }
+        if (InputValue.equals(WriteValueThisTime)) {
+            return true;
+        } else {
+            return proposalWriteNextIndex(InputValue);
+        }
+
+    }
+
+    /**
+     * define each component in Write(InputValue)
+     */
+    public void handlePrepare(ClientToServerMsg.ChatMsg InputValue) {
+
+        currentIndex = logEntrySlotManager.getFirstUnchosenIndex();
+        nextIndex = currentIndex + 1;
+        curProposalNumber = maxRound + 1;
+        maxRound += 1;
+        ReceivedDistinctPrepareResponse = new HashSet<>();
+        ReceivedDistinctNoMoreAccepted = new HashSet<>();
+
+
+        PrepareMsg SendPrepareMsg = new PrepareMsg(curProposalNumber, currentIndex, InputValue.getClientID(), InputValue.getMessageSequenceNumber());
+        new WaitRepeatSendPrepare(SendPrepareMsg, 20);
+
+    }
+
+
+    public void handlePrepareResponse(ClientToServerMsg.ChatMsg InputValue) {
+        int maxReplyAcceptedProposal = 0;
+        while (ReceivedDistinctPrepareResponse.size() <= ((double) totalNumOfReplicas) / 2) {
+
+            String ReceivedMsg = messageQueue.poll();
+            while (ReceivedMsg == null) {
+                ReceivedMsg = messageQueue.poll();
+            }
+            if (Message.getMessageType(ReceivedMsg) == Message.MESSAGE_TYPE.SUCCESS_RESPONSE) {
+                handleSingleSuccessResponse(SuccessResponseMsg.fromString(ReceivedMsg));
+            }
+            if (Message.getMessageType(ReceivedMsg) == Message.MESSAGE_TYPE.PREPARE_RESPONSE) {
+                PrepareResponseMsg ReceivedPreparedResponse = PrepareResponseMsg.fromString(ReceivedMsg);
+
+                if (ReceivedPreparedResponse.getClientID() == InputValue.getClientID()
+                        && ReceivedPreparedResponse.getMessageSequenceNumber() == InputValue.getMessageSequenceNumber()
+                        && ReceivedPreparedResponse.getSlotIndex() == currentIndex) {
+
+                    ReceivedDistinctPrepareResponse.add(ReceivedPreparedResponse.getResponseServerID());
+                    if (ReceivedPreparedResponse.getRoundNumber() > maxReplyAcceptedProposal) {
+                        maxReplyAcceptedProposal = ReceivedPreparedResponse.getRoundNumber();
+                        WriteValueThisTime = new ClientToServerMsg.ChatMsg(ReceivedPreparedResponse.getClientID(), ReceivedPreparedResponse.getMessageSequenceNumber(), ReceivedPreparedResponse.getChatMessageLiteral());///
+                    }
+                    if (ReceivedPreparedResponse.isNoMoreAccepted()) {
+                        ReceivedDistinctNoMoreAccepted.add(ReceivedPreparedResponse.getResponseServerID());
+                    }
+                    if (ReceivedDistinctNoMoreAccepted.size() > ((double) totalNumOfReplicas) / 2) {
+                        prepared = true;
+                    }
+
+
+                } else {
+                    if (ReceivedPreparedResponse.getSlotIndex() == currentIndex) {
+                        System.out.println("received prepare response with inconsistent ClientID and MessageSequence Number");
+                    }
+
+                }
+
+            }
+
+
+        }
+    }
+
+    public void handleAccept(ClientToServerMsg.ChatMsg InputValue) {
+
+        ReceivedDistinctAcceptResponse = new HashSet<>();
+        AcceptMsg sendAcceptMsg = new AcceptMsg(curProposalNumber, currentIndex, logEntrySlotManager.getFirstUnchosenIndex(), WriteValueThisTime.getClientID(), WriteValueThisTime.getMessageSequenceNumber(), WriteValueThisTime.getChatMessageLiteral());
+        new WaitRepeatSendAccept(sendAcceptMsg, 20);
+    }
+
+    public void handleAcceptResponse(ClientToServerMsg.ChatMsg InputValue) {
+
+        while (ReceivedDistinctAcceptResponse.size() <= ((double) totalNumOfReplicas) / 2) {
+            String ReceivedMsg = messageQueue.poll();
+            while (ReceivedMsg == null) {
+                ReceivedMsg = messageQueue.poll();
+            }
+            if (Message.getMessageType(ReceivedMsg) == Message.MESSAGE_TYPE.SUCCESS_RESPONSE) {
+                handleSingleSuccessResponse(SuccessResponseMsg.fromString(ReceivedMsg));
+            }
+            if (Message.getMessageType(ReceivedMsg) == Message.MESSAGE_TYPE.ACCEPT_RESPONSE) {
+                AcceptResponseMsg ReceivedAcceptResponse = AcceptResponseMsg.fromString(ReceivedMsg);
+                if (ReceivedAcceptResponse.getClientID() == WriteValueThisTime.getClientID()
+                        && ReceivedAcceptResponse.getMessageSequenceNumber() == WriteValueThisTime.getMessageSequenceNumber()) {
+                    ReceivedDistinctAcceptResponse.add(ReceivedAcceptResponse.getResponseServerID());
+                    if (ReceivedAcceptResponse.getMinProposal() > curProposalNumber) {
+                        maxRound = ReceivedAcceptResponse.getMinProposal();
+                        prepared = false;
+                        return;
+                    }
+                    if (ReceivedAcceptResponse.getFirstUnchosenIndex() <= logEntrySlotManager.getLastLogIndex() && logEntrySlotManager.isEntryChosen(ReceivedAcceptResponse.getFirstUnchosenIndex())) {
+                        try {
+                            PrintWriter SuccessPrintWriter = new PrintWriter(allReplicaSendSockets.get(ReceivedAcceptResponse.getResponseServerID()).getOutputStream(), true);
+                            SuccessPrintWriter.print(new SuccessMsg(ReceivedAcceptResponse.getFirstUnchosenIndex(), logEntrySlotManager.getLogEntryValue(ReceivedAcceptResponse.getFirstUnchosenIndex())));
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            System.out.printf("fail to build printwriter to replica ID: %s", ReceivedAcceptResponse.getResponseServerID());
+                        }
+                    }
+
+                } else {
+                    System.out.println("received accept response with inconsistent ClientID and MessageSequence Number");
+                }
+            }
+
+        }
+        logEntrySlotManager.insertLogEntry(currentIndex, curProposalNumber, WriteValueThisTime.toString());
+        logEntrySlotManager.chooseLogEntry(currentIndex);
+        logWriter.write(WriteValueThisTime.toString());
+        executedChatMessages.add(new ChatMessageIdentifier(WriteValueThisTime.getClientID(), WriteValueThisTime.getMessageSequenceNumber()));
+
+    }
+
+    public void handleSingleSuccessResponse(SuccessResponseMsg ReceivedSuccessResponse) {
+        if (ReceivedSuccessResponse.getFirstUnchosenIndexAfterUpdate() < logEntrySlotManager.getFirstUnchosenIndex()) {
+            try {
+                PrintWriter SuccessPrintWriter = new PrintWriter(allReplicaSendSockets.get(ReceivedSuccessResponse.getResponseServerID()).getOutputStream(), true);
+                SuccessPrintWriter.println(new SuccessMsg(ReceivedSuccessResponse.getModifiedIndex(), logEntrySlotManager.getLogEntryValue(ReceivedSuccessResponse.getFirstUnchosenIndexAfterUpdate())));
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.out.printf("fail to build SuccessPrintWriter to replica ID: %s", ReceivedSuccessResponse.getResponseServerID());
+            }
+        }
+    }
+
+
+    /**
+     * define resend thread for prepare and accept request
+     */
+    public class WaitRepeatSendPrepareTask extends TimerTask {
+
+        PrepareMsg sendPrepareMsg;
+
+
+        public WaitRepeatSendPrepareTask(PrepareMsg SendPrepareMsg) {
+            this.sendPrepareMsg = SendPrepareMsg;
+        }
+
+        @Override
+        public void run() {
+
+            if (ReceivedDistinctPrepareResponse.size() <= ((double) totalNumOfReplicas) / 2) {
+                for (Integer accepter : allReplicaSendSockets.keySet()) {
+                    try {
+                        PrintWriter PreparePrintWriter = new PrintWriter(allReplicaSendSockets.get(accepter).getOutputStream(), true);
+                        PreparePrintWriter.println(sendPrepareMsg);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        System.out.printf("fail to build PreparePrintWriter to replica ID: %s", accepter);
+                    }
+                }
+            } else {
+                cancel();
+            }
+        }
+    }
+
+    public class WaitRepeatSendPrepare {
+        Timer timer;
+
+        public WaitRepeatSendPrepare(PrepareMsg SendPrepareMsg, int seconds) {
+            timer = new Timer();
+            Calendar calendar = Calendar.getInstance();
+            Date time = calendar.getTime();
+            timer.schedule(new WaitRepeatSendPrepareTask(SendPrepareMsg), time, seconds * 1000);
+        }
+    }
+
+    public class WaitRepeatSendAcceptTask extends TimerTask {
+
+        AcceptMsg sendAcceptMsg;
+
+        public WaitRepeatSendAcceptTask(AcceptMsg sendAcceptMsg) {
+            this.sendAcceptMsg = sendAcceptMsg;
+        }
+
+        @Override
+        public void run() {
+
+            if (ReceivedDistinctAcceptResponse.size() <= ((double) totalNumOfReplicas) / 2) {
+                for (Integer accepter : allReplicaSendSockets.keySet()) {
+                    try {
+                        PrintWriter PreparePrintWriter = new PrintWriter(allReplicaSendSockets.get(accepter).getOutputStream(), true);
+                        PreparePrintWriter.println(sendAcceptMsg);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        System.out.printf("fail to build AcceptPrintWriter to replica ID: %s", accepter);
+                    }
+                }
+            } else {
+                cancel();
+            }
+        }
+    }
+
+    public class WaitRepeatSendAccept {
+        Timer timer;
+
+        public WaitRepeatSendAccept(AcceptMsg sendAcceptMsg, int seconds) {
+            timer = new Timer();
+            Calendar calendar = Calendar.getInstance();
+            Date time = calendar.getTime();
+            timer.schedule(new WaitRepeatSendAcceptTask(sendAcceptMsg), time, seconds * 1000);
+        }
+    }
+
+    private void actAsAcceptor() {
+        while (!isLeader) {
+            final String currentMessage = messageQueue.poll();
+            if (currentMessage == null) {
+                continue;
+            }
+            final Message.MESSAGE_TYPE currentType = Message.getMessageType(currentMessage);
+            if (currentType.equals(Message.MESSAGE_TYPE.PREPARE_RESPONSE)
+                    || currentType.equals(Message.MESSAGE_TYPE.ACCEPT_RESPONSE)
+                    || currentType.equals(Message.MESSAGE_TYPE.SUCCESS_RESPONSE)) {
+                continue;
+            } else {
+                if (currentType.equals(Message.MESSAGE_TYPE.PREPARE)) {
+                    handlePrepareMessage(currentMessage);
+                } else if (currentType.equals(Message.MESSAGE_TYPE.ACCEPT)) {
+                    handleAcceptMessage(currentMessage);
+                } else if (currentType.equals(Message.MESSAGE_TYPE.SUCCESS)) {
+                    handleSuccessMessage(currentMessage);
+                }
+            }
+        }
+    }
+
+    private void handlePrepareMessage(final String currentMessage) {
+        final PrepareMsg prepareMsg = PrepareMsg.fromString(currentMessage);
+        if (prepareMsg.getRoundNumber() >= logEntrySlotManager.getMinProposal()) {
+            logEntrySlotManager.setMinProposal(prepareMsg.getRoundNumber());
+            final PrepareResponseMsg prepareResponseMsg = new PrepareResponseMsg(
+                    logEntrySlotManager.getProposalID(prepareMsg.getSlotIndex()),
+                    prepareMsg.getSlotIndex(),
+                    this.serverId,
+                    prepareMsg.getSlotIndex() > logEntrySlotManager.getLastLogIndex(),
+                    prepareMsg.getClientID(),
+                    prepareMsg.getMessageSequenceNumber(),
+                    logEntrySlotManager.getLogEntryValue(prepareMsg.getSlotIndex())
+            );
+            final Socket sendSocket = allReplicaSendSockets.get(getCurrentLeader());
+            try {
+                final PrintWriter writer = new PrintWriter(sendSocket.getOutputStream(), true);
+                writer.println(prepareResponseMsg.toString());
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.out.println("Fail to send prepare response to leader!");
+            }
+        }
+    }
+
+    private void handleAcceptMessage(final String currentMessage) {
+        final AcceptMsg acceptMsg = AcceptMsg.fromString(currentMessage);
+        if (acceptMsg.getRoundNumber() >= logEntrySlotManager.getMinProposal()) {
+            logEntrySlotManager.setMinProposal(acceptMsg.getRoundNumber());
+            logEntrySlotManager.insertLogEntry(acceptMsg.getSlotIndex(), acceptMsg.getRoundNumber(), acceptMsg.getChatMessageLiteral());
+            for (int i = 0; i < logEntrySlotManager.getFirstUnchosenIndex(); i++) {
+                if (logEntrySlotManager.getProposalID(i) == acceptMsg.getRoundNumber()) {
+                    logEntrySlotManager.chooseLogEntry(i);
+                }
+            }
+            final AcceptResponseMsg acceptResponseMsg = new AcceptResponseMsg(
+                    logEntrySlotManager.getMinProposal(),
+                    logEntrySlotManager.getFirstUnchosenIndex(),
+                    this.serverId,
+                    acceptMsg.getClientID(),
+                    acceptMsg.getMessageSequenceNumber()
+            );
+            final Socket sendSocket = allReplicaSendSockets.get(getCurrentLeader());
+            try {
+                final PrintWriter writer = new PrintWriter(sendSocket.getOutputStream(), true);
+                writer.println(acceptResponseMsg.toString());
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.out.println("Fail to send accept response to leader!");
+            }
+        }
+    }
+
+    private void handleSuccessMessage(final String currentMessage) {
+        final SuccessMsg successMsg = SuccessMsg.fromString(currentMessage);
+        logEntrySlotManager.successLogEntry(successMsg.getSlotIndex(), successMsg.getChatMessageLiteral());
+        final SuccessResponseMsg successResponseMsg = new SuccessResponseMsg(
+                logEntrySlotManager.getFirstUnchosenIndex(),
+                successMsg.getSlotIndex(),
+                this.serverId
+        );
+        logWriter.write(successMsg.getChatMessageLiteral());
+        final Socket sendSocket = allReplicaSendSockets.get(getCurrentLeader());
+        try {
+            final PrintWriter writer = new PrintWriter(sendSocket.getOutputStream(), true);
+            writer.println(successResponseMsg.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Fail to send success response to leader!");
         }
     }
 }
