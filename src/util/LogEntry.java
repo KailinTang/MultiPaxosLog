@@ -5,6 +5,7 @@ public class LogEntry {
     // one log entry will be chosen if and only if acceptedProposal = Integer.MAX_VALUE
     private int acceptedProposal;
     private String acceptedValue;
+    private boolean isExecuted;
 
     private int numberOfReceivedPrepareResponse;
     private int numberOfReceivedAcceptResponse;
@@ -38,5 +39,13 @@ public class LogEntry {
 
     public void setNumberOfReceivedPrepareResponse(int numberOfReceivedPrepareResponse) {
         this.numberOfReceivedPrepareResponse = numberOfReceivedPrepareResponse;
+    }
+
+    public boolean isExecuted() {
+        return isExecuted;
+    }
+
+    public void setExecuted(boolean executed) {
+        isExecuted = executed;
     }
 }

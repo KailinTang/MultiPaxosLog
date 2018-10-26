@@ -1,8 +1,20 @@
 package util;
 
+import service.PaxosLogServer;
+
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+
 public class LogEntrySlotManager {
 
     private static final int INITIAL_ARRAY_CAPACITY = 10;
+
+    private final PaxosLogServer paxosLogServer;
+
+    private final int skipSlotSeqNum;
+    private final int serverId;
 
     private LogEntry[] logEntryArray;
     private final int size;
@@ -11,12 +23,15 @@ public class LogEntrySlotManager {
     private int lastLogIndex;   // the largest entry for which this server has accepted a proposal
     private int minProposal;    // the number of the smallest proposal this server will accept for any log entry
 
-    public LogEntrySlotManager() {
+    public LogEntrySlotManager(final PaxosLogServer paxosLogServer) {
+        this.paxosLogServer = paxosLogServer;
         this.logEntryArray = new LogEntry[INITIAL_ARRAY_CAPACITY];
         this.size = 0;
         this.firstUnchosenIndex = 0;
         this.lastLogIndex = 0;
         this.minProposal = 0;
+        this.skipSlotSeqNum = paxosLogServer.getSkipSlotSeqNum();
+        this.serverId = paxosLogServer.getServerId();
     }
 
     public int getProposalID(final int index) {
@@ -112,6 +127,9 @@ public class LogEntrySlotManager {
 
     private void updateFirstUnchosenIndex() {
         for (int i = 0; i < logEntryArray.length; i++) {
+            if (paxosLogServer.isLeader() && i == skipSlotSeqNum){
+                continue;
+            }
             if (logEntryArray[i] == null) {
                 this.firstUnchosenIndex = i;
                 break;
@@ -159,5 +177,35 @@ public class LogEntrySlotManager {
     public void setMinProposal(int minProposal) {
         selfUpdate();
         this.minProposal = minProposal;
+    }
+
+    public void write() {
+        BufferedWriter bufferedWriter = null;
+        try {
+            bufferedWriter = new BufferedWriter(
+                    new OutputStreamWriter(
+                            new FileOutputStream("replica" + serverId + ".log", true)));
+            for(LogEntry logEntry:logEntryArray){
+                if (logEntry.isExecuted()){
+                    continue;
+                }
+                else if (!logEntry.isExecuted() && logEntry.getAcceptedProposal() == Integer.MAX_VALUE){
+                    bufferedWriter.write(logEntry.getAcceptedValue());
+                    bufferedWriter.newLine();
+                    logEntry.setExecuted(true);
+                }
+                else{
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                bufferedWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

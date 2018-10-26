@@ -1,5 +1,5 @@
 package service;
-
+// Execute then return response to client
 import message.*;
 import thread.HeartBeatTracker;
 import thread.ThreadHandler;
@@ -93,7 +93,7 @@ public class PaxosLogServer {
                 System.currentTimeMillis(),
                 HEART_BEAT_PERIOD_MILLS);
         this.logWriter = new LogWriter(serverId);
-        this.logEntrySlotManager = new LogEntrySlotManager();
+        this.logEntrySlotManager = new LogEntrySlotManager(this);
         this.executedChatMessages = new HashSet<>();
         this.prepared = false;
         this.currentIndex = 0;
@@ -370,6 +370,7 @@ public class PaxosLogServer {
 
             }
 
+            // we should never execute the message that is already executed before
             if (executedChatMessages.contains(new ChatMessageIdentifier(nextChatMsg.getClientID(), nextChatMsg.getMessageSequenceNumber()))) {
                 break;
             }
@@ -416,6 +417,10 @@ public class PaxosLogServer {
         if (prepared == true) {
             currentIndex = nextIndex;
             nextIndex += 1;
+            if (currentIndex == skipSlotSeqNum) {
+                currentIndex += 1;
+                nextIndex += 1;
+            }
             return handleWhenPrepared(InputValue);
         } else {
             handlePrepare(InputValue);
@@ -445,6 +450,10 @@ public class PaxosLogServer {
 
         currentIndex = logEntrySlotManager.getFirstUnchosenIndex();
         nextIndex = currentIndex + 1;
+        if (currentIndex == skipSlotSeqNum) {
+            currentIndex += 1;
+            nextIndex += 1;
+        }
         curProposalNumber = maxRound + 1;
         maxRound += 1;
         ReceivedDistinctPrepareResponse = new HashSet<>();
@@ -465,9 +474,9 @@ public class PaxosLogServer {
             while (ReceivedMsg == null) {
                 ReceivedMsg = messageQueue.poll();
             }
-            if (Message.getMessageType(ReceivedMsg) == Message.MESSAGE_TYPE.SUCCESS_RESPONSE) {
-                handleSingleSuccessResponse(SuccessResponseMsg.fromString(ReceivedMsg));
-            }
+//            if (Message.getMessageType(ReceivedMsg) == Message.MESSAGE_TYPE.SUCCESS_RESPONSE) {
+//                handleSingleSuccessResponse(SuccessResponseMsg.fromString(ReceivedMsg));
+//            }
             if (Message.getMessageType(ReceivedMsg) == Message.MESSAGE_TYPE.PREPARE_RESPONSE) {
                 PrepareResponseMsg ReceivedPreparedResponse = PrepareResponseMsg.fromString(ReceivedMsg);
 
@@ -515,9 +524,9 @@ public class PaxosLogServer {
             while (ReceivedMsg == null) {
                 ReceivedMsg = messageQueue.poll();
             }
-            if (Message.getMessageType(ReceivedMsg) == Message.MESSAGE_TYPE.SUCCESS_RESPONSE) {
-                handleSingleSuccessResponse(SuccessResponseMsg.fromString(ReceivedMsg));
-            }
+//            if (Message.getMessageType(ReceivedMsg) == Message.MESSAGE_TYPE.SUCCESS_RESPONSE) {
+//                handleSingleSuccessResponse(SuccessResponseMsg.fromString(ReceivedMsg));
+//            }
             if (Message.getMessageType(ReceivedMsg) == Message.MESSAGE_TYPE.ACCEPT_RESPONSE) {
                 AcceptResponseMsg ReceivedAcceptResponse = AcceptResponseMsg.fromString(ReceivedMsg);
                 if (ReceivedAcceptResponse.getClientID() == WriteValueThisTime.getClientID()
@@ -531,9 +540,9 @@ public class PaxosLogServer {
                     if (ReceivedAcceptResponse.getFirstUnchosenIndex() <= logEntrySlotManager.getLastLogIndex() && logEntrySlotManager.isEntryChosen(ReceivedAcceptResponse.getFirstUnchosenIndex())) {
                         try {
                             PrintWriter SuccessPrintWriter = new PrintWriter(allReplicaSendSockets.get(ReceivedAcceptResponse.getResponseServerID()).getOutputStream(), true);
-                            SuccessPrintWriter.println(new SuccessMsg(
-                                    ReceivedAcceptResponse.getFirstUnchosenIndex(),
-                                    logEntrySlotManager.getLogEntryValue(ReceivedAcceptResponse.getFirstUnchosenIndex())).toString());
+                            for (int sendSuccessIndex=ReceivedAcceptResponse.getFirstUnchosenIndex();sendSuccessIndex < logEntrySlotManager.getFirstUnchosenIndex();sendSuccessIndex++){
+                                SuccessPrintWriter.println(new SuccessMsg(sendSuccessIndex, logEntrySlotManager.getLogEntryValue(sendSuccessIndex)));
+                            }
                         } catch (IOException e) {
                             e.printStackTrace();
                             System.out.printf("fail to build printwriter to replica ID: %s", ReceivedAcceptResponse.getResponseServerID());
@@ -547,7 +556,7 @@ public class PaxosLogServer {
         }
         logEntrySlotManager.insertLogEntry(currentIndex, curProposalNumber, WriteValueThisTime.toString());
         logEntrySlotManager.chooseLogEntry(currentIndex);
-        logWriter.write(WriteValueThisTime.toString());
+        logEntrySlotManager.write();
         executedChatMessages.add(new ChatMessageIdentifier(WriteValueThisTime.getClientID(), WriteValueThisTime.getMessageSequenceNumber()));
         try {
             multicastToAllOtherReplicas((new SuccessMsg(currentIndex, WriteValueThisTime.getChatMessageLiteral())).toString());
@@ -728,15 +737,27 @@ public class PaxosLogServer {
                     successMsg.getSlotIndex(),
                     this.serverId
             );
-            logWriter.write(successMsg.getChatMessageLiteral());
-            final Socket sendSocket = allReplicaSendSockets.get(getCurrentLeader());
-            try {
-                final PrintWriter writer = new PrintWriter(sendSocket.getOutputStream(), true);
-                writer.println(successResponseMsg.toString());
-            } catch (IOException e) {
-                e.printStackTrace();
-                System.out.println("Fail to send success response to leader!");
-            }
+            logEntrySlotManager.write();
+//            final Socket sendSocket = allReplicaSendSockets.get(getCurrentLeader());
+//            try {
+//                final PrintWriter writer = new PrintWriter(sendSocket.getOutputStream(), true);
+//                writer.println(successResponseMsg.toString());
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//                System.out.println("Fail to send success response to leader!");
+//            }
         }
+    }
+
+    public int getServerId() {
+        return serverId;
+    }
+
+    public boolean isLeader() {
+        return isLeader;
+    }
+
+    public int getSkipSlotSeqNum() {
+        return skipSlotSeqNum;
     }
 }
