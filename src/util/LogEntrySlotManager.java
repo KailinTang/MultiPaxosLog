@@ -7,6 +7,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 
+
+/**
+ * A log entry slot manger that manage the slot entry for each replica
+ */
 public class LogEntrySlotManager {
 
     private static final int INITIAL_ARRAY_CAPACITY = 10;
@@ -16,6 +20,7 @@ public class LogEntrySlotManager {
     private final int skipSlotSeqNum;
     private final int serverId;
 
+    // we use an array of LogEntry to model the entry slots, using array enable us to allow a hole (skip slot)
     private LogEntry[] logEntryArray;
     private final int size;
 
@@ -127,7 +132,7 @@ public class LogEntrySlotManager {
 
     private void updateFirstUnchosenIndex() {
         for (int i = 0; i < logEntryArray.length; i++) {
-            if (paxosLogServer.isLeader() && i == skipSlotSeqNum){
+            if (paxosLogServer.isLeader() && i == skipSlotSeqNum) {
                 continue;
             }
             if (logEntryArray[i] == null) {
@@ -179,22 +184,27 @@ public class LogEntrySlotManager {
         this.minProposal = minProposal;
     }
 
+    /**
+     * Write the chosen value to the log of the replica
+     * Note that you can write (execute) if and only if there is no holes in front of current slot
+     */
     public void write() {
         BufferedWriter bufferedWriter = null;
         try {
             bufferedWriter = new BufferedWriter(
                     new OutputStreamWriter(
                             new FileOutputStream("replica" + serverId + ".log", true)));
-            for(LogEntry logEntry:logEntryArray){
-                if (logEntry.isExecuted()){
-                    continue;
+            for (LogEntry logEntry : logEntryArray) {
+                if (logEntry == null) {
+                    break;
                 }
-                else if (!logEntry.isExecuted() && logEntry.getAcceptedProposal() == Integer.MAX_VALUE){
+                if (logEntry.isExecuted()) {
+                    continue;
+                } else if (!logEntry.isExecuted() && logEntry.getAcceptedProposal() == Integer.MAX_VALUE) {
                     bufferedWriter.write(logEntry.getAcceptedValue());
                     bufferedWriter.newLine();
                     logEntry.setExecuted(true);
-                }
-                else{
+                } else {
                     break;
                 }
             }
@@ -209,3 +219,4 @@ public class LogEntrySlotManager {
         }
     }
 }
+

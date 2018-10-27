@@ -2,6 +2,9 @@ package util;
 
 import java.util.Objects;
 
+/**
+ * A pair of IP address and port number
+ */
 public class AddressPortPair {
 
     private final String ip;

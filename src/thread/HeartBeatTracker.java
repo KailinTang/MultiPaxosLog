@@ -1,9 +1,11 @@
 package thread;
 
+/**
+ * A heartbeat tracking worker which track the heartbeat from leader and execute timeout logic using callbacks
+ */
 public class HeartBeatTracker {
 
-    private final static int TOLERATE_FACTOR = 4;
-    private final static int LEADER_TIME_OUT_WAIT = 5000;
+    private final static int TOLERATE_FACTOR = 5;
 
     private final Runnable increaseViewNumberCallBack;
     private final Runnable electLeaderCallBack;

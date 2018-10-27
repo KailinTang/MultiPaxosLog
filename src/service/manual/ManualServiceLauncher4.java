@@ -6,7 +6,7 @@ import util.AddressPortPair;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ManualServiceLauncher1 {
+public class ManualServiceLauncher4 {
 
     public static void main(String[] args) {
         final List<AddressPortPair> allReplicasInfo = new ArrayList<>();
@@ -17,9 +17,9 @@ public class ManualServiceLauncher1 {
         allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3061));
 
         final PaxosLogServer logServer = new PaxosLogServer(
-                1,
+                4,
                 "127.0.0.1",
-                3058,
+                3061,
                 false,
                 0,
                 2,

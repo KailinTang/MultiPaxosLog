@@ -1,14 +1,15 @@
-package service.manual;
+package client;
 
-import service.PaxosLogServer;
+
 import util.AddressPortPair;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class ManualServiceLauncher1 {
+public class ClientLauncher2 {
 
-    public static void main(String[] args) {
+    public static void main(String args[]) {
+
         final List<AddressPortPair> allReplicasInfo = new ArrayList<>();
         allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3057));
         allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3058));
@@ -16,20 +17,13 @@ public class ManualServiceLauncher1 {
         allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3060));
         allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3061));
 
-        final PaxosLogServer logServer = new PaxosLogServer(
-                1,
+        final PaxosLogClient logClient = new PaxosLogClient(
                 "127.0.0.1",
-                3058,
-                false,
-                0,
-                2,
+                9999,
                 allReplicasInfo,
-                -1,
-                0.0
-        );
+                0.0);
 
-        logServer.start();
-
+        logClient.start();
     }
 
 }

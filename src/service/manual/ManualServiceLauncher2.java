@@ -13,6 +13,8 @@ public class ManualServiceLauncher2 {
         allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3057));
         allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3058));
         allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3059));
+        allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3060));
+        allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3061));
 
         final PaxosLogServer logServer = new PaxosLogServer(
                 2,
@@ -20,9 +22,9 @@ public class ManualServiceLauncher2 {
                 3059,
                 false,
                 0,
-                1,
+                2,
                 allReplicasInfo,
-                0,
+                -1,
                 0.0
         );
 

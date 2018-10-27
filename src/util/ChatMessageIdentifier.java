@@ -2,6 +2,10 @@ package util;
 
 import java.util.Objects;
 
+/**
+ * A POJO that model the distinctness of messages sent from different clients
+ * Note that a pair of client ID and message sequence number can
+ */
 public class ChatMessageIdentifier {
     private final long clinetId;
     private final int messageSequenceNumber;

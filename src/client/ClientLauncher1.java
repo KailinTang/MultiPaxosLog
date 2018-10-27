@@ -14,10 +14,12 @@ public class ClientLauncher1 {
         allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3057));
         allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3058));
         allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3059));
+        allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3060));
+        allReplicasInfo.add(new AddressPortPair("127.0.0.1", 3061));
 
         final PaxosLogClient logClient = new PaxosLogClient(
                 "127.0.0.1",
-                3061,
+                8888,
                 allReplicasInfo,
                 0.0);
 

@@ -15,6 +15,7 @@ public class LogEntry {
         this.acceptedValue = acceptedValue;
         this.numberOfReceivedPrepareResponse = 0;
         this.numberOfReceivedAcceptResponse = 0;
+        this.isExecuted = false;
     }
 
     public int getAcceptedProposal() {
