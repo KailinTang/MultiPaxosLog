@@ -35,7 +35,7 @@ public class ManualServiceLauncher0 {
                 2,
                 allReplicasInfo,
                 -1,
-                0.0
+                0.1
         );
 
         logServer.start();

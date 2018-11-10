@@ -25,7 +25,7 @@ public class ManualServiceLauncher2 {
                 2,
                 allReplicasInfo,
                 -1,
-                0.0
+                0.1
         );
 
         logServer.start();

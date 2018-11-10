@@ -150,6 +150,7 @@ public class LogEntrySlotManager {
         for (int i = logEntryArray.length - 1; i >= 0; i--) {
             if (logEntryArray[i] != null) {
                 lastLogIndex = i;
+                break;
             }
         }
     }
